@@ -161,7 +161,7 @@ export function exportToExcel(params: ExportParams): void {
       ? `SLIP REKAPITULASI KEHADIRAN BULANAN - ${summaries[0].trainee.name.toUpperCase()}`
       : 'LAPORAN REKAPITULASI KEHADIRAN BULANAN PESERTA'
   ];
-  const subTitleRow = ['Lembaga Pelatihan Vokasi HadirKu'];
+  const subTitleRow = ['Punya Skill Akademi, Bandung'];
   const infoRow1 = isSingle
     ? [`Periode: ${monthName} ${year}`, ``, `Nama: ${summaries[0].trainee.name} (NIM: ${summaries[0].trainee.nim})`]
     : [`Periode: ${monthName} ${year}`, ``, `Kejuruan: ${kejuruanName}`];
@@ -279,7 +279,7 @@ export function exportToPDF(params: ExportParams): void {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('HADIRKU - SISTEM ABSENSI & REKAPITULASI PELATIHAN KEJURUAN', 14, 11);
+  doc.text('PUNYA SKILL AKADEMI - SISTEM ABSENSI & REKAPITULASI PELATIHAN KEJURUAN', 14, 11);
 
   // Subtitle / Info text
   doc.setTextColor(30, 41, 59);

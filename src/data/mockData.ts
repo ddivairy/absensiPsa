@@ -317,7 +317,7 @@ export const INITIAL_SETTINGS: AttendanceSettings = {
   officeLocation: {
     lat: -6.2088,
     lng: 106.8456,
-    name: 'Gedung Pusat Pelatihan Vokasi HadirKu, Jakarta',
+    name: 'Punya Skill Akademi, Bandung',
     radiusMeters: 100
   }
 };
@@ -438,7 +438,7 @@ export function generateInitialAttendance(): AttendanceRecord[] {
           verificationStatus: 'verified',
           verifiedBy: 'Bambang Sudirman, M.Kom (Admin)',
           verifiedAt: `${date} 08:00:00`,
-          location: 'Kampus Pelatihan Vokasi',
+          location: 'Punya Skill Akademi, Bandung',
           notes: 'Mengajar kelas kejuruan terjadwal'
         });
       }
@@ -547,7 +547,7 @@ export function generateInitialAttendance(): AttendanceRecord[] {
         verificationStatus,
         verifiedBy,
         verifiedAt: verifiedBy ? `${date} 09:00:00` : undefined,
-        location: 'Kampus Pelatihan Vokasi HadirKu',
+        location: 'Punya Skill Akademi, Bandung',
         coordinates: { lat: -6.2088, lng: 106.8456 },
         notes
       });

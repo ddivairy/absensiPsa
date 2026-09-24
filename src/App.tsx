@@ -137,7 +137,7 @@ const MainLayout: React.FC = () => {
                   <path d="M16 15c4-3 7 1 9 3 2-2 5-6 9-3v8c-3-2-6-2-9 0-3-2-6-2-9 0v-8Z" fill="#fff" />
                 </svg>
                 <span className="font-bold tracking-tight text-[#123B59]">
-                  hadir <span className="font-medium text-[#4C83B5]">SK<span className="text-[#D95B83]">I</span>LL</span>
+                  PSA <span className="font-medium text-[#4C83B5]">Punya Skill Akademi</span>
                 </span>
               </div>
             </div>
@@ -192,7 +192,7 @@ const MainLayout: React.FC = () => {
 
         {/* Footer */}
         <footer className="mt-10 pt-4 border-t border-[#E4EAF0] text-xs text-[#6F7F8D] flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>HadirKu Skill &copy; 2026 Sistem Presensi Magang & Vokasi</span>
+          <span>Punya Skill Akademi &copy; 2026 Sistem Presensi Magang & Vokasi</span>
           <span>Verifikasi Bertingkat: Admin &rarr; Mentor &rarr; Peserta</span>
         </footer>
       </div>
