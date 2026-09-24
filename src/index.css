@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --color-navy: #123B59;
+  --color-deep: #0D2F47;
+  --color-blue: #4C83B5;
+  --color-pale: #A9C7DE;
+  --color-canvas: #F4F6F8;
+  --color-line: #E4EAF0;
+  --color-muted: #6F7F8D;
+  --color-pink: #D95B83;
+}
+
+:root {
+  --navy: #123B59;
+  --deep: #0D2F47;
+  --blue: #4C83B5;
+  --pale: #A9C7DE;
+  --canvas: #F4F6F8;
+  --line: #E4EAF0;
+  --muted: #6F7F8D;
+  --pink: #D95B83;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--navy);
+  background-color: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, textarea, select {
+  font: inherit;
+}
+
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 3px solid rgba(76, 131, 181, 0.32);
+  outline-offset: 2px;
+}
+
+/* Surface cards matching style.html */
+.surface {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  box-shadow: 0 7px 20px rgba(18, 59, 89, 0.045);
+}
+
+.soft-hover {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.soft-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(18, 59, 89, 0.09);
+}
+
+/* Sidebar Navigation Items */
+.side-nav-item {
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.18s ease;
+}
+
+.side-nav-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+}
+
+.side-nav-item.is-active {
+  background: rgba(169, 199, 222, 0.2);
+  color: #ffffff;
+}
+
+.side-nav-item.is-active .side-icon {
+  color: #A9C7DE;
+}
+
+/* Mobile Nav Items */
+.mobile-nav-item.is-active {
+  color: var(--blue);
+}
+
+.mobile-nav-item.is-active .mobile-icon {
+  background: #EAF2F8;
+  color: var(--blue);
+}
+
+/* Metric card */
+.metric-card {
+  min-height: 138px;
+}
+
+/* Calendar Cells */
+.calendar-cell {
+  min-height: 42px;
+}
+
+.calendar-cell.today {
+  box-shadow: inset 0 0 0 2px var(--blue);
+}
+
+/* Timeline */
+.timeline-line {
+  position: absolute;
+  left: 12px;
+  top: 26px;
+  bottom: 25px;
+  width: 1px;
+  background: #DCE7EF;
+}
+
+/* Brand styling from style.html */
+.logo-shield {
+  width: 42px;
+  height: 48px;
+  flex: none;
+}
+
+.brand-punya {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 0.85;
+  letter-spacing: -0.06em;
+}
+
+.brand-skill {
+  font-size: 12px;
+  letter-spacing: 0.27em;
+  color: #A9C7DE;
+  font-weight: 500;
+}
+
+.brand-skill b {
+  color: var(--pink);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F4F6F8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C8D6E2;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A9C7DE;
+}
