@@ -88,7 +88,7 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({ isOpen, on
               Beralih Akun & Peran
             </h2>
             <p className="text-xs text-[#6F7F8D] mt-0.5">
-              Pilih akun untuk menguji fitur sebagai Admin, Mentor, atau Peserta Magang.
+              Pilih akun untuk menguji peran Admin, Mentor, atau Peserta (Token JWT diterbitkan ulang otomatis via TiDB).
             </p>
           </div>
           <button

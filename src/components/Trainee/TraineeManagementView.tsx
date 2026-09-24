@@ -24,7 +24,8 @@ import {
   FileCheck2,
   Trash2,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Loader2
 } from 'lucide-react';
 import { Kejuruan, User, Role } from '../../types';
 import {
@@ -37,10 +38,12 @@ import {
 
 export const TraineeManagementView: React.FC = () => {
   const {
+    currentUser,
     users,
     kejuruanList,
     addUser,
     deleteUser,
+    deleteUsersByRole,
     addKejuruan,
     importUsers,
     regenerateUserCredentials
@@ -54,6 +57,10 @@ export const TraineeManagementView: React.FC = () => {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState<boolean>(false);
   const [isAddKjModalOpen, setIsAddKjModalOpen] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [isClearModalOpen, setIsClearModalOpen] = useState<boolean>(false);
+  const [clearRoleTarget, setClearRoleTarget] = useState<'trainee' | 'mentor' | 'all'>('trainee');
+  const [confirmWord, setConfirmWord] = useState<string>('');
+  const [isProcessingClear, setIsProcessingClear] = useState<boolean>(false);
 
   // Copied feedback
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -89,6 +96,7 @@ export const TraineeManagementView: React.FC = () => {
   const [parsedImportUsers, setParsedImportUsers] = useState<Partial<User>[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
   const [isProcessingImport, setIsProcessingImport] = useState(false);
+  const [importTargetRole, setImportTargetRole] = useState<'auto' | 'trainee' | 'mentor'>('auto');
 
   const trainees = useMemo(() => users.filter(u => u.role === 'trainee'), [users]);
   const mentors = useMemo(() => users.filter(u => u.role === 'mentor'), [users]);
@@ -153,18 +161,21 @@ export const TraineeManagementView: React.FC = () => {
     setIsAddUserModalOpen(true);
   };
 
-  const handleRegenerateCredentialsForUser = (userId: string, userName: string) => {
-    const creds = regenerateUserCredentials(userId);
+  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
+
+  const handleRegenerateCredentialsForUser = async (userId: string, userName: string) => {
+    const creds = await regenerateUserCredentials(userId);
     showToast(`Kredensial baru untuk ${userName}: Kode ${creds.loginCode} · PW: ${creds.password}`);
   };
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim()) return;
 
     const kj = kejuruanList.find(k => k.id === newUserKejuruanId);
+    setIsSubmittingUser(true);
 
-    addUser({
+    const res = await addUser({
       name: newUserName,
       email: newUserEmail || `${newUserName.toLowerCase().replace(/\s+/g, '.')}@vokasi.id`,
       role: newUserRole,
@@ -179,8 +190,13 @@ export const TraineeManagementView: React.FC = () => {
       avatar: `https://images.unsplash.com/photo-${newUserRole === 'mentor' ? '1534528741775-53994a69daeb' : '1535713875002-d1d0cf377fde'}?w=150`
     });
 
-    showToast(`Akun ${newUserRole === 'mentor' ? 'Mentor' : 'Peserta'} ${newUserName} berhasil dibuat!`);
-    setIsAddUserModalOpen(false);
+    setIsSubmittingUser(false);
+    if (res.success) {
+      showToast(res.message);
+      setIsAddUserModalOpen(false);
+    } else {
+      showToast(`Gagal: ${res.message}`);
+    }
   };
 
   const handleCreateKejuruan = (e: React.FormEvent) => {
@@ -210,16 +226,20 @@ export const TraineeManagementView: React.FC = () => {
     showToast('File Excel data akun peserta & mentor berhasil diunduh!');
   };
 
-  // Excel Import Handling
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Excel Import Handling with explicit role separation
+  const handleFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    roleOverride?: 'auto' | 'trainee' | 'mentor'
+  ) => {
+    const file = e.target.files?.[0] || importingFile;
     if (!file) return;
 
+    const roleToUse = roleOverride || importTargetRole;
     setImportingFile(file);
     setImportError(null);
     setIsProcessingImport(true);
 
-    const res = await parseUsersFromExcelFile(file, kejuruanList);
+    const res = await parseUsersFromExcelFile(file, kejuruanList, roleToUse);
     setIsProcessingImport(false);
 
     if (!res.success || !res.users) {
@@ -231,14 +251,86 @@ export const TraineeManagementView: React.FC = () => {
     }
   };
 
-  const handleApplyImport = () => {
+  const handleTargetRoleChange = async (newRole: 'auto' | 'trainee' | 'mentor') => {
+    setImportTargetRole(newRole);
+    if (importingFile) {
+      setIsProcessingImport(true);
+      const res = await parseUsersFromExcelFile(importingFile, kejuruanList, newRole);
+      setIsProcessingImport(false);
+      if (res.success && res.users) {
+        setParsedImportUsers(res.users);
+        setImportError(null);
+      }
+    } else if (parsedImportUsers.length > 0 && newRole !== 'auto') {
+      setParsedImportUsers(prev =>
+        prev.map(u => ({
+          ...u,
+          role: newRole,
+          nim: u.nim?.startsWith(newRole === 'mentor' ? 'TRN' : 'MNT')
+            ? `${newRole === 'mentor' ? 'MNT' : 'TRN'}-2026-${Math.floor(100 + Math.random() * 900)}`
+            : u.nim,
+          password:
+            newRole === 'mentor' && (!u.password || u.password === '123456')
+              ? 'mentor123'
+              : newRole === 'trainee' && (!u.password || u.password === 'mentor123')
+              ? '123456'
+              : u.password,
+        }))
+      );
+    }
+  };
+
+  const handleOpenImportModal = (role?: 'auto' | 'trainee' | 'mentor') => {
+    const chosen = role || (activeRoleFilter === 'mentor' ? 'mentor' : activeRoleFilter === 'trainee' ? 'trainee' : 'auto');
+    setImportTargetRole(chosen);
+    setImportingFile(null);
+    setParsedImportUsers([]);
+    setImportError(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleApplyImport = async () => {
     if (parsedImportUsers.length === 0) return;
-    const result = importUsers(parsedImportUsers);
+    setIsProcessingImport(true);
+    const result = await importUsers(parsedImportUsers);
+    setIsProcessingImport(false);
     showToast(result.message);
     setIsImportModalOpen(false);
     setImportingFile(null);
     setParsedImportUsers([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const previewTrainees = useMemo(
+    () => parsedImportUsers.filter(u => u.role === 'trainee').length,
+    [parsedImportUsers]
+  );
+  const previewMentors = useMemo(
+    () => parsedImportUsers.filter(u => u.role === 'mentor').length,
+    [parsedImportUsers]
+  );
+
+  const targetCount = useMemo(() => {
+    if (clearRoleTarget === 'trainee') return trainees.length;
+    if (clearRoleTarget === 'mentor') return mentors.length;
+    return trainees.length + mentors.length;
+  }, [clearRoleTarget, trainees.length, mentors.length]);
+
+  const handleOpenClearModal = (role?: 'trainee' | 'mentor' | 'all') => {
+    const chosenRole = role || (activeRoleFilter === 'mentor' ? 'mentor' : activeRoleFilter === 'trainee' ? 'trainee' : 'all');
+    setClearRoleTarget(chosenRole);
+    setConfirmWord('');
+    setIsClearModalOpen(true);
+  };
+
+  const handleExecuteClear = async () => {
+    if (confirmWord.trim() !== 'HAPUS') return;
+    setIsProcessingClear(true);
+    const res = await deleteUsersByRole(clearRoleTarget);
+    setIsProcessingClear(false);
+    setIsClearModalOpen(false);
+    setConfirmWord('');
+    showToast(res.message);
   };
 
   return (
@@ -265,8 +357,19 @@ export const TraineeManagementView: React.FC = () => {
           </p>
         </div>
 
-        {/* Action Buttons: Add, Export, Import */}
+        {/* Action Buttons: Add, Export, Import, Kejuruan, and Clear All */}
         <div className="flex flex-wrap items-center gap-2">
+          {currentUser?.role === 'admin' && (
+            <button
+              onClick={() => handleOpenClearModal()}
+              className="surface px-3.5 py-2.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Hapus massal akun peserta atau mentor"
+            >
+              <Trash2 className="w-4 h-4 text-rose-500" />
+              <span>Hapus Semua</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportExcel}
             className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
@@ -277,12 +380,7 @@ export const TraineeManagementView: React.FC = () => {
           </button>
 
           <button
-            onClick={() => {
-              setImportingFile(null);
-              setParsedImportUsers([]);
-              setImportError(null);
-              setIsImportModalOpen(true);
-            }}
+            onClick={() => handleOpenImportModal()}
             className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
             title="Impor peserta & mentor dari file Excel"
           >
@@ -310,42 +408,69 @@ export const TraineeManagementView: React.FC = () => {
 
       {/* Role Filter Tabs Strip */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 bg-[#F4F6F8] p-1 rounded-xl border border-[#E4EAF0]">
-          <button
-            type="button"
-            onClick={() => setActiveRoleFilter('all')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeRoleFilter === 'all'
-                ? 'bg-[#123B59] text-white shadow-xs'
-                : 'text-[#6F7F8D] hover:text-[#123B59]'
-            }`}
-          >
-            Semua Akun ({users.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveRoleFilter('trainee')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              activeRoleFilter === 'trainee'
-                ? 'bg-[#123B59] text-white shadow-xs'
-                : 'text-[#6F7F8D] hover:text-[#123B59]'
-            }`}
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>Peserta Magang ({trainees.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveRoleFilter('mentor')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              activeRoleFilter === 'mentor'
-                ? 'bg-[#123B59] text-white shadow-xs'
-                : 'text-[#6F7F8D] hover:text-[#123B59]'
-            }`}
-          >
-            <UserCheck className="w-3.5 h-3.5" />
-            <span>Instruktur Mentor ({mentors.length})</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 bg-[#F4F6F8] p-1 rounded-xl border border-[#E4EAF0]">
+            <button
+              type="button"
+              onClick={() => setActiveRoleFilter('all')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeRoleFilter === 'all'
+                  ? 'bg-[#123B59] text-white shadow-xs'
+                  : 'text-[#6F7F8D] hover:text-[#123B59]'
+              }`}
+            >
+              Semua Akun ({users.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveRoleFilter('trainee')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                activeRoleFilter === 'trainee'
+                  ? 'bg-[#123B59] text-white shadow-xs'
+                  : 'text-[#6F7F8D] hover:text-[#123B59]'
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Peserta Magang ({trainees.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveRoleFilter('mentor')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                activeRoleFilter === 'mentor'
+                  ? 'bg-[#123B59] text-white shadow-xs'
+                  : 'text-[#6F7F8D] hover:text-[#123B59]'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Instruktur Mentor ({mentors.length})</span>
+            </button>
+          </div>
+
+          {/* Quick Clear Button when filtered */}
+          {currentUser?.role === 'admin' && activeRoleFilter === 'trainee' && trainees.length > 0 && (
+            <button
+              type="button"
+              onClick={() => handleOpenClearModal('trainee')}
+              className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer transition shadow-2xs"
+              title="Hapus semua akun peserta magang"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>Hapus Semua Peserta ({trainees.length})</span>
+            </button>
+          )}
+
+          {currentUser?.role === 'admin' && activeRoleFilter === 'mentor' && mentors.length > 0 && (
+            <button
+              type="button"
+              onClick={() => handleOpenClearModal('mentor')}
+              className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer transition shadow-2xs"
+              title="Hapus semua akun instruktur mentor"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>Hapus Semua Mentor ({mentors.length})</span>
+            </button>
+          )}
         </div>
 
         {/* Info label about credentials */}
@@ -543,10 +668,10 @@ export const TraineeManagementView: React.FC = () => {
                           {user.role !== 'admin' && (
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={async () => {
                                 if (confirm(`Hapus akun ${user.name}?`)) {
-                                  deleteUser(user.id);
-                                  showToast(`Akun ${user.name} telah dihapus.`);
+                                  const res = await deleteUser(user.id);
+                                  showToast(res.message);
                                 }
                               }}
                               className="p-1.5 rounded-lg hover:bg-[#FCF3F6] text-[#6F7F8D] hover:text-[#B84469] cursor-pointer transition"
@@ -745,7 +870,7 @@ export const TraineeManagementView: React.FC = () => {
                 </p>
                 <h3 className="text-base font-bold text-[#123B59] flex items-center gap-2">
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                  <span>Impor Peserta & Mentor dari Excel</span>
+                  <span>Impor Akun Pengguna dari Excel</span>
                 </h3>
               </div>
               <button
@@ -757,37 +882,96 @@ export const TraineeManagementView: React.FC = () => {
             </div>
 
             <div className="overflow-y-auto space-y-4 pr-1 flex-1 text-xs">
+              {/* Target Role Selector Tabs */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-bold text-[#123B59]">
+                    Kategori Akun yang Diimpor:
+                  </label>
+                  <span className="text-[10px] text-[#6F7F8D]">
+                    {importTargetRole === 'trainee'
+                      ? 'Semua data akan disimpan sebagai Peserta Magang'
+                      : importTargetRole === 'mentor'
+                      ? 'Semua data akan disimpan sebagai Instruktur Mentor'
+                      : 'Peran dibaca otomatis dari kolom "Peran" / sheet Excel'}
+                  </span>
+                </div>
+                <div className="p-1 bg-[#F4F6F8] rounded-xl border border-[#E4EAF0] grid grid-cols-3 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleTargetRoleChange('trainee')}
+                    className={`py-2 px-2 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                      importTargetRole === 'trainee'
+                        ? 'bg-[#123B59] text-white shadow-xs'
+                        : 'text-[#6F7F8D] hover:text-[#123B59]'
+                    }`}
+                  >
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    <span>Khusus Peserta</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTargetRoleChange('mentor')}
+                    className={`py-2 px-2 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                      importTargetRole === 'mentor'
+                        ? 'bg-[#123B59] text-white shadow-xs'
+                        : 'text-[#6F7F8D] hover:text-[#123B59]'
+                    }`}
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>Khusus Mentor</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTargetRoleChange('auto')}
+                    className={`py-2 px-2 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                      importTargetRole === 'auto'
+                        ? 'bg-[#123B59] text-white shadow-xs'
+                        : 'text-[#6F7F8D] hover:text-[#123B59]'
+                    }`}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Otomatis (Kolom/Sheet)</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Template Download Card */}
               <div className="p-3.5 rounded-2xl bg-[#F8FAFB] border border-[#E4EAF0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <div className="font-bold text-[#123B59]">
-                    Belum punya format Excel yang sesuai?
+                    Template Excel {importTargetRole === 'trainee' ? 'Peserta Magang' : importTargetRole === 'mentor' ? 'Instruktur Mentor' : 'Campuran'}
                   </div>
                   <div className="text-[11px] text-[#6F7F8D] mt-0.5">
-                    Gunakan template resmi kami yang sudah berisi format kolom dan kode kejuruan.
+                    Gunakan template resmi kami agar format kolom langsung sesuai dan terpisah rapi.
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => downloadUserImportTemplate(kejuruanList)}
-                  className="surface inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#E4EAF0] hover:bg-white text-[#123B59] text-xs font-bold cursor-pointer shrink-0 shadow-xs"
-                >
-                  <Download className="w-3.5 h-3.5 text-[#4C83B5]" />
-                  <span>Unduh Template Excel</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => downloadUserImportTemplate(kejuruanList, importTargetRole)}
+                    className="surface inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#C8DCEB] bg-white hover:bg-[#EAF2F8] text-[#123B59] text-[11px] font-bold cursor-pointer shadow-xs"
+                    title="Unduh format template"
+                  >
+                    <Download className="w-3.5 h-3.5 text-[#4C83B5]" />
+                    <span>Unduh Template ({importTargetRole === 'trainee' ? 'Peserta' : importTargetRole === 'mentor' ? 'Mentor' : 'Lengkap'})</span>
+                  </button>
+                </div>
               </div>
 
               {/* Upload Dropzone */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-[#A9C7DE] hover:border-[#123B59] rounded-2xl p-7 text-center cursor-pointer bg-[#F8FAFB] transition"
+                className="border-2 border-dashed border-[#A9C7DE] hover:border-[#123B59] rounded-2xl p-6 text-center cursor-pointer bg-[#F8FAFB] transition"
               >
-                <Upload className="w-8 h-8 mx-auto text-[#4C83B5] mb-2" />
+                <Upload className="w-7 h-7 mx-auto text-[#4C83B5] mb-1.5" />
                 <div className="font-bold text-[#123B59]">
                   {importingFile ? importingFile.name : 'Pilih atau Tarik Berkas Excel ke Sini'}
                 </div>
                 <p className="text-[11px] text-[#6F7F8D] mt-1">
-                  Mendukung berkas .xlsx, .xls, atau .csv (Maksimal 10MB)
+                  Mendukung .xlsx, .xls, .csv &middot; Mode: <strong className="text-[#123B59]">{importTargetRole === 'trainee' ? 'Khusus Peserta Magang' : importTargetRole === 'mentor' ? 'Khusus Instruktur Mentor' : 'Deteksi Otomatis'}</strong>
                 </p>
                 <input
                   ref={fileInputRef}
@@ -809,35 +993,106 @@ export const TraineeManagementView: React.FC = () => {
               {/* Preview Table of Parsed Users */}
               {parsedImportUsers.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#123B59]">
-                      Pratinjau Data ({parsedImportUsers.length} Akun Terdeteksi):
-                    </span>
-                    <span className="text-[11px] text-[#28618F] font-bold bg-[#EAF2F8] px-2.5 py-0.5 rounded-full">
-                      Siap disimpan
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs">
+                      <span className="font-bold text-[#123B59]">
+                        Pratinjau Data ({parsedImportUsers.length} Akun):
+                      </span>{' '}
+                      <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        {previewTrainees} Peserta
+                      </span>{' '}
+                      <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                        {previewMentors} Mentor
+                      </span>
+                    </div>
+
+                    {/* Quick batch toggle buttons */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleTargetRoleChange('trainee')}
+                        className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg border border-blue-200 cursor-pointer"
+                        title="Ubah semua baris di bawah menjadi Peserta"
+                      >
+                        Semua Peserta
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTargetRoleChange('mentor')}
+                        className="text-[10px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded-lg border border-purple-200 cursor-pointer"
+                        title="Ubah semua baris di bawah menjadi Mentor"
+                      >
+                        Semua Mentor
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="max-h-48 overflow-y-auto border border-[#E4EAF0] rounded-xl surface">
+                  <div className="max-h-56 overflow-y-auto border border-[#E4EAF0] rounded-xl surface">
                     <table className="w-full text-left text-[11px]">
                       <thead className="bg-[#F8FAFB] sticky top-0 border-b border-[#E4EAF0] text-[#6F7F8D] font-bold">
                         <tr>
-                          <th className="py-2.5 px-3">No</th>
-                          <th className="py-2.5 px-3">Nama</th>
-                          <th className="py-2.5 px-3">Peran</th>
-                          <th className="py-2.5 px-3">Kejuruan</th>
-                          <th className="py-2.5 px-3 font-mono">Kode 8-Digit</th>
-                          <th className="py-2.5 px-3 font-mono">Password</th>
+                          <th className="py-2.5 px-3 w-8">No</th>
+                          <th className="py-2.5 px-3 min-w-[140px]">Nama</th>
+                          <th className="py-2.5 px-3 min-w-[130px]">Peran (Role)</th>
+                          <th className="py-2.5 px-3 min-w-[100px]">NIM / NIP</th>
+                          <th className="py-2.5 px-3 min-w-[110px]">Kejuruan</th>
+                          <th className="py-2.5 px-3 font-mono min-w-[90px]">Kode 8-Digit</th>
+                          <th className="py-2.5 px-3 font-mono min-w-[90px]">Password</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#E4EAF0]">
                         {parsedImportUsers.map((u, i) => (
-                          <tr key={i} className="hover:bg-[#F8FAFB]/60">
+                          <tr key={i} className="hover:bg-[#F8FAFB]/60 transition">
                             <td className="py-2 px-3 text-[#6F7F8D]">{i + 1}</td>
                             <td className="py-2 px-3 font-bold text-[#123B59]">
                               {u.name}
                             </td>
-                            <td className="py-2 px-3 capitalize text-[#6F7F8D]">{u.role}</td>
+                            {/* Interactive Peran Dropdown */}
+                            <td className="py-2 px-3">
+                              <select
+                                value={u.role || 'trainee'}
+                                onChange={e => {
+                                  const newRole = e.target.value as Role;
+                                  setParsedImportUsers(prev => {
+                                    const next = [...prev];
+                                    const targetUser = next[i];
+                                    const newNim = targetUser.nim?.startsWith(newRole === 'mentor' ? 'TRN' : 'MNT')
+                                      ? `${newRole === 'mentor' ? 'MNT' : 'TRN'}-2026-${Math.floor(100 + Math.random() * 900)}`
+                                      : targetUser.nim;
+                                    const newPass =
+                                      newRole === 'mentor' && (!targetUser.password || targetUser.password === '123456')
+                                        ? 'mentor123'
+                                        : newRole === 'trainee' && (!targetUser.password || targetUser.password === 'mentor123')
+                                        ? '123456'
+                                        : targetUser.password;
+                                    const newEmail =
+                                      targetUser.email?.endsWith('student.id') && newRole === 'mentor'
+                                        ? targetUser.email.replace('student.id', 'hadirku.id')
+                                        : targetUser.email?.endsWith('hadirku.id') && newRole === 'trainee'
+                                        ? targetUser.email.replace('hadirku.id', 'student.id')
+                                        : targetUser.email;
+
+                                    next[i] = {
+                                      ...targetUser,
+                                      role: newRole,
+                                      nim: newNim,
+                                      password: newPass,
+                                      email: newEmail,
+                                    };
+                                    return next;
+                                  });
+                                }}
+                                className={`text-[11px] font-bold py-1 px-2 rounded-lg border outline-none cursor-pointer ${
+                                  u.role === 'mentor'
+                                    ? 'bg-purple-50 text-purple-800 border-purple-300'
+                                    : 'bg-blue-50 text-blue-800 border-blue-300'
+                                }`}
+                              >
+                                <option value="trainee">🎓 Peserta (Trainee)</option>
+                                <option value="mentor">👨‍🏫 Instruktur (Mentor)</option>
+                              </select>
+                            </td>
+                            <td className="py-2 px-3 font-mono text-[#6F7F8D]">{u.nim}</td>
                             <td className="py-2 px-3 text-[#6F7F8D]">{u.kejuruanName}</td>
                             <td className="py-2 px-3 font-mono font-bold text-[#28618F]">
                               {u.loginCode}
@@ -862,11 +1117,23 @@ export const TraineeManagementView: React.FC = () => {
               </button>
               <button
                 type="button"
-                disabled={parsedImportUsers.length === 0}
+                disabled={parsedImportUsers.length === 0 || isProcessingImport}
                 onClick={handleApplyImport}
-                className="px-5 py-2 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] disabled:opacity-50 text-white font-bold cursor-pointer shadow-sm"
+                className="px-5 py-2 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] disabled:opacity-50 text-white font-bold cursor-pointer shadow-sm flex items-center gap-2"
               >
-                Terapkan & Simpan {parsedImportUsers.length} Akun
+                {isProcessingImport ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Menyimpan ke TiDB...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>
+                      Terapkan &amp; Simpan ({previewTrainees} Peserta, {previewMentors} Mentor)
+                    </span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -958,6 +1225,190 @@ export const TraineeManagementView: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: HAPUS SEMUA AKUN (ADMIN ONLY) */}
+      {isClearModalOpen && currentUser?.role === 'admin' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0D2F47]/50 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="surface rounded-2xl border border-rose-200 w-full max-w-lg p-6 space-y-4 shadow-2xl bg-white">
+            <div className="flex items-center justify-between border-b border-[#E4EAF0] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold tracking-[.13em] text-rose-600 uppercase">
+                    TINDAKAN BERBAHAYA &middot; KHUSUS ADMINISTRATOR
+                  </p>
+                  <h3 className="text-base font-bold text-[#123B59]">
+                    Hapus Semua Akun Pengguna
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsClearModalOpen(false)}
+                className="text-[#6F7F8D] hover:text-[#123B59] p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <p className="text-[#6F7F8D]">
+                Pilih kategori akun yang ingin dihapus massal dari database TiDB Cloud. Tindakan ini permanen dan tidak dapat dibatalkan.
+              </p>
+
+              {/* Selection Options */}
+              <div className="space-y-2">
+                <label
+                  onClick={() => setClearRoleTarget('trainee')}
+                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition ${
+                    clearRoleTarget === 'trainee'
+                      ? 'border-rose-400 bg-rose-50/70 text-[#123B59]'
+                      : 'border-[#E4EAF0] hover:bg-[#F8FAFB] text-[#6F7F8D]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="radio"
+                      name="clearRole"
+                      checked={clearRoleTarget === 'trainee'}
+                      onChange={() => setClearRoleTarget('trainee')}
+                      className="text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <div className="font-bold text-[#123B59] flex items-center gap-1.5">
+                        <GraduationCap className="w-4 h-4 text-[#4C83B5]" />
+                        <span>Hapus Semua Peserta Magang</span>
+                      </div>
+                      <p className="text-[11px] text-[#6F7F8D]">
+                        Menghapus seluruh akun peserta magang ({trainees.length} akun).
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-[#28618F]">
+                    {trainees.length} Peserta
+                  </span>
+                </label>
+
+                <label
+                  onClick={() => setClearRoleTarget('mentor')}
+                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition ${
+                    clearRoleTarget === 'mentor'
+                      ? 'border-rose-400 bg-rose-50/70 text-[#123B59]'
+                      : 'border-[#E4EAF0] hover:bg-[#F8FAFB] text-[#6F7F8D]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="radio"
+                      name="clearRole"
+                      checked={clearRoleTarget === 'mentor'}
+                      onChange={() => setClearRoleTarget('mentor')}
+                      className="text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <div className="font-bold text-[#123B59] flex items-center gap-1.5">
+                        <UserCheck className="w-4 h-4 text-[#4C83B5]" />
+                        <span>Hapus Semua Instruktur Mentor</span>
+                      </div>
+                      <p className="text-[11px] text-[#6F7F8D]">
+                        Menghapus seluruh akun instruktur mentor ({mentors.length} akun).
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                    {mentors.length} Mentor
+                  </span>
+                </label>
+
+                <label
+                  onClick={() => setClearRoleTarget('all')}
+                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition ${
+                    clearRoleTarget === 'all'
+                      ? 'border-rose-400 bg-rose-50/70 text-[#123B59]'
+                      : 'border-[#E4EAF0] hover:bg-[#F8FAFB] text-[#6F7F8D]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="radio"
+                      name="clearRole"
+                      checked={clearRoleTarget === 'all'}
+                      onChange={() => setClearRoleTarget('all')}
+                      className="text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <div className="font-bold text-[#123B59] flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-rose-600" />
+                        <span>Hapus Semua (Peserta &amp; Mentor)</span>
+                      </div>
+                      <p className="text-[11px] text-[#6F7F8D]">
+                        Menghapus semua akun peserta dan mentor sekaligus ({trainees.length + mentors.length} akun).
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                    {trainees.length + mentors.length} Akun
+                  </span>
+                </label>
+              </div>
+
+              {/* Safety notice for Admin account */}
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                <div className="text-[11px] leading-relaxed">
+                  <span className="font-bold">Akun Administrator Terlindungi:</span> Akun Administrator utama (
+                  {users.find(u => u.role === 'admin')?.name || 'Admin'}) tidak akan pernah terhapus dari TiDB.
+                </div>
+              </div>
+
+              {/* Security confirmation input */}
+              <div className="space-y-1.5 pt-2">
+                <label className="block text-[#123B59] font-bold text-xs">
+                  Ketik kata <span className="font-mono text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 font-extrabold">HAPUS</span> untuk konfirmasi:
+                </label>
+                <input
+                  type="text"
+                  value={confirmWord}
+                  onChange={e => setConfirmWord(e.target.value.toUpperCase())}
+                  placeholder="Ketik HAPUS"
+                  className="w-full p-2.5 rounded-xl border border-rose-200 bg-[#FCF3F6] font-mono font-bold text-sm tracking-widest text-rose-700 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-200"
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="pt-3 border-t border-[#E4EAF0] flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsClearModalOpen(false)}
+                  disabled={isProcessingClear}
+                  className="px-4 py-2 rounded-xl border border-[#E4EAF0] text-[#6F7F8D] hover:bg-[#F8FAFB] font-bold cursor-pointer disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={confirmWord.trim() !== 'HAPUS' || targetCount === 0 || isProcessingClear}
+                  onClick={handleExecuteClear}
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:pointer-events-none text-white font-bold cursor-pointer shadow-sm flex items-center gap-2"
+                >
+                  {isProcessingClear ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Menghapus dari TiDB...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Hapus {targetCount} Akun Sekarang</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
