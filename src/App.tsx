@@ -118,7 +118,7 @@ const MainLayout: React.FC = () => {
       />
 
       {/* Main Workspace Area (padded on left for fixed sidebar) */}
-      <div className="flex-1 w-full lg:pl-[292px] p-4 sm:p-6 lg:p-7 pb-24 lg:pb-8 flex flex-col">
+      <div className="flex-1 w-full lg:pl-[280px] p-4 sm:p-5 lg:p-6 pb-24 lg:pb-8 flex flex-col">
         {/* Top Header matching style.html */}
         <header className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div className="flex items-center justify-between lg:block">

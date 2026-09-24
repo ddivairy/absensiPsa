@@ -146,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarInner = (
-    <div className="flex flex-col h-full bg-[#123B59] text-white p-5 select-none w-64 md:w-[260px] overflow-y-auto">
+    <div className="flex flex-col h-full bg-[#123B59] text-white p-5 select-none w-[240px] overflow-y-auto sidebar-inner">
       {/* Brand Header */}
       <div className="flex items-center justify-between px-1">
         <button
@@ -305,7 +305,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Desktop Fixed Sidebar (Matching style.html .desktop-sidebar) */}
       <aside
-        className="hidden lg:flex fixed left-5 top-5 bottom-5 w-[252px] bg-[#123B59] rounded-[20px] shadow-[0_18px_42px_rgba(13,47,71,0.17)] z-30 overflow-hidden"
+        className="hidden lg:flex fixed left-5 top-5 bottom-5 w-[240px] bg-[#123B59] rounded-[20px] shadow-[0_18px_42px_rgba(13,47,71,0.17)] z-30 overflow-hidden"
         aria-label="Navigasi utama"
       >
         {sidebarInner}
