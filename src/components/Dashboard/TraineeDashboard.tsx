@@ -52,6 +52,9 @@ export const TraineeDashboard: React.FC = () => {
   const isCheckedIn = !!todayRecord?.checkInTime;
   const isCheckedOut = !!todayRecord?.checkOutTime;
 
+  // Detect if current time is past check-in limit (late warning before check-in)
+  const [isCurrentlyLate, setIsCurrentlyLate] = useState(false);
+
   // Assigned kejuruan & mentor name
   const myKejuruan = kejuruanList.find(k => k.id === currentUser.kejuruanId);
   const mentorName = myKejuruan?.mentorName || 'Instruktur Kejuruan';
@@ -95,16 +98,19 @@ export const TraineeDashboard: React.FC = () => {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      setLiveTime(
-        `${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}.${String(
-          now.getSeconds()
-        ).padStart(2, '0')}`
-      );
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const timeStr = `${hh}.${mm}.${ss}`;
+      setLiveTime(timeStr);
+      // Compare HH:MM against 09:00 (jam masuk resmi)
+      const currentHHMM = `${hh}:${mm}`;
+      setIsCurrentlyLate(currentHHMM > '09:00');
     };
     updateTime();
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [settings.lateLimitTime]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -190,6 +196,23 @@ export const TraineeDashboard: React.FC = () => {
         <div className="fixed bottom-7 left-1/2 -translate-x-1/2 z-50 rounded-xl bg-[#0D2F47] px-5 py-3 text-center text-sm font-bold text-white shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
           <Check className="w-4 h-4 text-[#A9C7DE]" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Late Warning Banner — tampil jika belum check-in dan sudah lewat jam masuk */}
+      {isCurrentlyLate && !isCheckedIn && !todayLeave && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-amber-800">
+              Perhatian: Kamu Terlambat!
+            </p>
+            <p className="mt-0.5 text-xs text-amber-700 leading-relaxed">
+              Jam masuk resmi adalah pukul <strong>09.00 WIB</strong>. Check-in setelah jam tersebut
+              akan dicatat sebagai <strong>Terlambat</strong> dan akan mendapatkan{' '}
+              <strong>pengurangan poin kehadiran</strong>. Segera lakukan check-in sekarang.
+            </p>
+          </div>
         </div>
       )}
 
@@ -515,7 +538,11 @@ export const TraineeDashboard: React.FC = () => {
           <div className="mt-6 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] p-3 text-xs text-[#6F7F8D] space-y-1">
             <p className="font-bold text-[#123B59]">Aturan Absensi:</p>
             <p className="text-[11px] leading-relaxed">
-              Jam Masuk: {settings.startTime} WIB &middot; Batas Telat: {settings.lateLimitTime} WIB &middot; Pulang: {settings.endTime} WIB.
+              Jam Masuk: <strong className="text-[#123B59]">09.00 WIB</strong>
+              {' '}&middot; Pulang: <strong className="text-[#123B59]">17.00 WIB</strong>.
+            </p>
+            <p className="text-[11px] leading-relaxed text-amber-700">
+              ⚠ Check-in lebih dari pukul <strong>09.00 WIB</strong> dihitung <strong>Terlambat</strong> dan mendapat pengurangan poin.
             </p>
           </div>
         </aside>

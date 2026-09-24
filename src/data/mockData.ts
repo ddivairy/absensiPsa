@@ -309,8 +309,8 @@ export const INITIAL_USERS: User[] = [
 ];
 
 export const INITIAL_SETTINGS: AttendanceSettings = {
-  startTime: '08:00',
-  lateLimitTime: '08:15',
+  startTime: '09:00',
+  lateLimitTime: '09:00',
   endTime: '17:00',
   allowCheckoutStart: '16:00',
   workDays: [1, 2, 3, 4, 5], // Mon-Fri
