@@ -46,7 +46,6 @@ export const TraineeDashboard: React.FC = () => {
   const monthName = INDONESIAN_MONTHS[currentMonth - 1];
 
   const [liveTime, setLiveTime] = useState<string>('');
-  const [dailyNote, setDailyNote] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -132,7 +131,7 @@ export const TraineeDashboard: React.FC = () => {
         const coordinates = { lat: position.coords.latitude, lng: position.coords.longitude };
         const result = isCheckedIn
           ? clockOut(undefined, coordinates)
-          : clockIn(dailyNote, undefined, coordinates, workMode);
+          : clockIn(undefined, undefined, coordinates, workMode);
         setIsLocating(false);
         showToast(result.message);
       },
@@ -432,21 +431,6 @@ export const TraineeDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Daily Note (if not checked in) */}
-            {!isCheckedIn && !todayLeave && (
-              <div className="mt-4">
-                <label className="text-xs font-bold text-[#123B59]">
-                  Catatan / Agenda Pelatihan Hari Ini (Opsional)
-                </label>
-                <input
-                  type="text"
-                  value={dailyNote}
-                  onChange={e => setDailyNote(e.target.value)}
-                  placeholder="Contoh: Praktik modul kejuruan, instalasi server..."
-                  className="mt-1.5 w-full rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] px-3.5 py-2.5 text-xs text-[#123B59] focus:outline-none focus:border-[#4C83B5]"
-                />
-              </div>
-            )}
           </div>
 
           {/* Big Action Button (Matching style.html) */}

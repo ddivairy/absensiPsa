@@ -54,6 +54,7 @@ interface AppContextType {
     endDate: string;
     reason: string;
     attachmentName?: string;
+    attachmentUrl?: string;
   }) => void;
   reviewLeaveRequest: (
     id: string,
@@ -560,6 +561,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     endDate: string;
     reason: string;
     attachmentName?: string;
+    attachmentUrl?: string;
   }) => {
     const start = new Date(req.startDate);
     const end = new Date(req.endDate);
@@ -578,7 +580,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       endDate: req.endDate,
       daysCount: diffDays,
       reason: req.reason,
-      attachmentName: req.attachmentName || (req.type === 'sakit' ? 'surat_keterangan_sakit.pdf' : 'surat_izin.pdf'),
+      attachmentName: req.attachmentName,
+      attachmentUrl: req.attachmentUrl,
       status: 'pending',
       submittedAt: `${getTodayDateString()} ${getCurrentTimeWIB()}`
     };
