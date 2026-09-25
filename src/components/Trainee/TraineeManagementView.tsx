@@ -7,14 +7,11 @@ import {
   Search,
   Filter,
   X,
-  Phone,
-  Mail,
   GraduationCap,
   FileSpreadsheet,
   Upload,
   Download,
   KeyRound,
-  Lock,
   Copy,
   Check,
   RefreshCw,
@@ -75,11 +72,8 @@ export const TraineeManagementView: React.FC = () => {
   // New User Form State
   const [newUserName, setNewUserName] = useState('');
   const [newUserNim, setNewUserNim] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserKejuruanId, setNewUserKejuruanId] = useState(kejuruanList[0]?.id || '');
   const [newUserRole, setNewUserRole] = useState<'trainee' | 'mentor'>('trainee');
-  const [newUserLoginCode, setNewUserLoginCode] = useState(generate8DigitLoginCode());
   const [newUserPassword, setNewUserPassword] = useState(generateDefaultPassword());
 
   // New Kejuruan Form State
@@ -100,6 +94,23 @@ export const TraineeManagementView: React.FC = () => {
 
   const trainees = useMemo(() => users.filter(u => u.role === 'trainee'), [users]);
   const mentors = useMemo(() => users.filter(u => u.role === 'mentor'), [users]);
+  const normalizeKejuruanName = (name?: string) => name?.trim().toLocaleLowerCase('id-ID') || '';
+
+  const userKejuruanOptions = useMemo(() => {
+    const programs = new Map<string, string>();
+    users
+      .filter(user => user.role === 'trainee' || user.role === 'mentor')
+      .forEach(user => {
+        const masterProgram = kejuruanList.find(program => program.id === user.kejuruanId);
+        const name = user.kejuruanName?.trim() || masterProgram?.name?.trim();
+        const key = normalizeKejuruanName(name);
+        if (key && name) programs.set(key, name);
+      });
+
+    return [...programs.entries()]
+      .map(([value, name]) => ({ value, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'id'));
+  }, [users, kejuruanList]);
 
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
@@ -108,7 +119,9 @@ export const TraineeManagementView: React.FC = () => {
         return false;
       }
       // Kejuruan filter
-      if (selectedKejuruan !== 'all' && u.kejuruanId !== selectedKejuruan) {
+      const masterProgram = kejuruanList.find(program => program.id === u.kejuruanId);
+      const userProgram = normalizeKejuruanName(u.kejuruanName || masterProgram?.name);
+      if (selectedKejuruan !== 'all' && userProgram !== selectedKejuruan) {
         return false;
       }
       // Search
@@ -122,7 +135,7 @@ export const TraineeManagementView: React.FC = () => {
 
       return matchSearch;
     });
-  }, [users, activeRoleFilter, selectedKejuruan, searchQuery]);
+  }, [users, kejuruanList, activeRoleFilter, selectedKejuruan, searchQuery]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -151,12 +164,9 @@ export const TraineeManagementView: React.FC = () => {
 
   const handleOpenAddUserModal = (role: 'trainee' | 'mentor' = 'trainee') => {
     setNewUserRole(role);
-    setNewUserLoginCode(generate8DigitLoginCode());
+    setNewUserNim(generate8DigitLoginCode());
     setNewUserPassword(generateDefaultPassword());
     setNewUserName('');
-    setNewUserNim('');
-    setNewUserEmail('');
-    setNewUserPhone('');
     setNewUserKejuruanId(kejuruanList[0]?.id || '');
     setIsAddUserModalOpen(true);
   };
@@ -165,6 +175,10 @@ export const TraineeManagementView: React.FC = () => {
 
   const handleRegenerateCredentialsForUser = async (userId: string, userName: string) => {
     const creds = await regenerateUserCredentials(userId);
+    if (!creds.success) {
+      showToast(`Gagal memperbarui kredensial ${userName}: ${creds.message || 'database tidak dapat diperbarui.'}`);
+      return;
+    }
     showToast(`Kredensial baru untuk ${userName}: Kode ${creds.loginCode} · PW: ${creds.password}`);
   };
 
@@ -173,17 +187,21 @@ export const TraineeManagementView: React.FC = () => {
     if (!newUserName.trim()) return;
 
     const kj = kejuruanList.find(k => k.id === newUserKejuruanId);
+    if (!/^\d{8}$/.test(newUserNim) || !/^\d{8}$/.test(newUserPassword)) {
+      showToast('NIM/Kode Login dan sandi harus masing-masing 8 digit angka.');
+      return;
+    }
     setIsSubmittingUser(true);
 
     const res = await addUser({
       name: newUserName,
-      email: newUserEmail || `${newUserName.toLowerCase().replace(/\s+/g, '.')}@vokasi.id`,
+      email: `${newUserNim}@hadirku.id`,
       role: newUserRole,
-      nim: newUserNim || `${newUserRole === 'mentor' ? 'MNT' : 'TRN'}-${Date.now().toString().slice(-4)}`,
+      nim: newUserNim,
       kejuruanId: newUserKejuruanId,
       kejuruanName: kj?.name || '',
-      phone: newUserPhone || '0812-3456-7890',
-      loginCode: newUserLoginCode,
+      phone: '',
+      loginCode: newUserNim,
       password: newUserPassword,
       status: 'active',
       joinedDate: new Date().toISOString().split('T')[0],
@@ -263,19 +281,7 @@ export const TraineeManagementView: React.FC = () => {
       }
     } else if (parsedImportUsers.length > 0 && newRole !== 'auto') {
       setParsedImportUsers(prev =>
-        prev.map(u => ({
-          ...u,
-          role: newRole,
-          nim: u.nim?.startsWith(newRole === 'mentor' ? 'TRN' : 'MNT')
-            ? `${newRole === 'mentor' ? 'MNT' : 'TRN'}-2026-${Math.floor(100 + Math.random() * 900)}`
-            : u.nim,
-          password:
-            newRole === 'mentor' && (!u.password || u.password === '123456')
-              ? 'mentor123'
-              : newRole === 'trainee' && (!u.password || u.password === 'mentor123')
-              ? '123456'
-              : u.password,
-        }))
+        prev.map(u => ({ ...u, role: newRole }))
       );
     }
   };
@@ -490,9 +496,9 @@ export const TraineeManagementView: React.FC = () => {
             className="text-xs py-2 px-3 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5]"
           >
             <option value="all">Semua Program Kejuruan</option>
-            {kejuruanList.map(kj => (
-              <option key={kj.id} value={kj.id}>
-                {kj.code} - {kj.name}
+            {userKejuruanOptions.map(program => (
+              <option key={program.value} value={program.value}>
+                {program.name}
               </option>
             ))}
           </select>
@@ -519,22 +525,18 @@ export const TraineeManagementView: React.FC = () => {
                 <th className="py-3 px-3.5 w-10 text-center">No</th>
                 <th className="py-3 px-3 min-w-[200px]">Nama Pengguna</th>
                 <th className="py-3 px-3 w-28">Peran (Role)</th>
-                <th className="py-3 px-3 w-28">NIM / NIP</th>
+                <th className="py-3 px-3 w-36">NIM / Kode Login</th>
                 <th className="py-3 px-3 min-w-[150px]">Kejuruan</th>
-                <th className="py-3 px-3 min-w-[150px] bg-[#EAF2F8] text-[#28618F] font-bold">
-                  Kode Login 8-Digit
-                </th>
                 <th className="py-3 px-3 min-w-[130px] bg-[#F4F6F8]">
-                  Password
+                  Sandi 8 Digit
                 </th>
-                <th className="py-3 px-3 min-w-[160px]">Kontak (Email / WA)</th>
                 <th className="py-3 px-3 w-24 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E4EAF0]">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-[#6F7F8D] italic">
+                  <td colSpan={7} className="py-8 text-center text-[#6F7F8D] italic">
                     Tidak ada data akun yang cocok dengan filter pencarian.
                   </td>
                 </tr>
@@ -586,9 +588,14 @@ export const TraineeManagementView: React.FC = () => {
                         )}
                       </td>
 
-                      {/* NIM / NIP */}
+                      {/* Single 8-digit account identifier */}
                       <td className="py-3 px-3 font-mono text-[11px] text-[#123B59] font-semibold">
-                        {user.nim}
+                        <div className="inline-flex items-center gap-1.5">
+                          <span>{user.loginCode || user.nim}</span>
+                          <button type="button" onClick={() => copyToClipboard(user.loginCode || user.nim, user.id, 'code')} className="text-[#6F7F8D] hover:text-[#28618F] cursor-pointer" title="Salin NIM/Kode Login">
+                            {isCodeCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
                       </td>
 
                       {/* Kejuruan */}
@@ -596,32 +603,11 @@ export const TraineeManagementView: React.FC = () => {
                         {user.kejuruanName || '-'}
                       </td>
 
-                      {/* 8-Digit Login Code */}
-                      <td className="py-3 px-3 bg-[#EAF2F8]/30">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-[#C8DCEB] shadow-2xs font-mono text-xs font-bold text-[#28618F] tracking-wider">
-                          <span>{user.loginCode || 'Belum ada'}</span>
-                          {user.loginCode && (
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard(user.loginCode!, user.id, 'code')}
-                              className="text-[#6F7F8D] hover:text-[#28618F] cursor-pointer p-0.5"
-                              title="Salin Kode Login 8 Digit"
-                            >
-                              {isCodeCopied ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-
                       {/* Password */}
                       <td className="py-3 px-3 bg-[#F8FAFB]/50">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-[#E4EAF0] shadow-2xs font-mono text-xs text-[#123B59] font-semibold">
-                          <span>{isPasswordVisible ? user.password || '123456' : '••••••••'}</span>
-                          <button
+                          <span>{isPasswordVisible ? user.password || 'Belum tersedia' : '••••••••'}</span>
+                          {user.password && <button
                             type="button"
                             onClick={() => togglePasswordVisibility(user.id)}
                             className="text-[#6F7F8D] hover:text-[#123B59] cursor-pointer p-0.5"
@@ -632,10 +618,10 @@ export const TraineeManagementView: React.FC = () => {
                             ) : (
                               <Eye className="w-3.5 h-3.5" />
                             )}
-                          </button>
-                          <button
+                          </button>}
+                          {user.password && <button
                             type="button"
-                            onClick={() => copyToClipboard(user.password || '123456', user.id, 'pass')}
+                            onClick={() => user.password && copyToClipboard(user.password, user.id, 'pass')}
                             className="text-[#6F7F8D] hover:text-[#123B59] cursor-pointer p-0.5"
                             title="Salin password"
                           >
@@ -644,14 +630,8 @@ export const TraineeManagementView: React.FC = () => {
                             ) : (
                               <Copy className="w-3.5 h-3.5" />
                             )}
-                          </button>
+                          </button>}
                         </div>
-                      </td>
-
-                      {/* Email & WA */}
-                      <td className="py-3 px-3 text-[#6F7F8D] text-[11px]">
-                        <div className="truncate max-w-[150px] font-medium text-[#123B59]">{user.email}</div>
-                        <div className="text-[#6F7F8D]">{user.phone}</div>
                       </td>
 
                       {/* Actions */}
@@ -661,7 +641,7 @@ export const TraineeManagementView: React.FC = () => {
                             type="button"
                             onClick={() => handleRegenerateCredentialsForUser(user.id, user.name)}
                             className="p-1.5 rounded-lg hover:bg-[#EAF2F8] text-[#6F7F8D] hover:text-[#28618F] cursor-pointer transition"
-                            title="Acak Kode 8-Digit & Password Baru"
+                            title="Buat ulang NIM/Kode dan sandi 8 digit"
                           >
                             <RefreshCw className="w-3.5 h-3.5" />
                           </button>
@@ -713,7 +693,7 @@ export const TraineeManagementView: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div>
                 <div>
                   <label className="block text-[#123B59] font-bold mb-1">Peran Akun</label>
                   <select
@@ -726,16 +706,6 @@ export const TraineeManagementView: React.FC = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-[#123B59] font-bold mb-1">NIM / NIP</label>
-                  <input
-                    type="text"
-                    value={newUserNim}
-                    onChange={e => setNewUserNim(e.target.value)}
-                    placeholder={newUserRole === 'mentor' ? 'MNT-WD-01' : 'TRN-2026-001'}
-                    className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-mono font-semibold"
-                  />
-                </div>
               </div>
 
               <div>
@@ -770,72 +740,41 @@ export const TraineeManagementView: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[#123B59] text-[11px] flex items-center gap-1.5">
                     <KeyRound className="w-3.5 h-3.5 text-[#4C83B5]" />
-                    <span>Kredensial Login (Dibuat Otomatis)</span>
+                    <span>Kredensial login (masing-masing 8 digit)</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => {
-                      setNewUserLoginCode(generate8DigitLoginCode());
+                      setNewUserNim(generate8DigitLoginCode());
                       setNewUserPassword(generateDefaultPassword());
                     }}
                     className="text-[11px] text-[#4C83B5] hover:underline flex items-center gap-1 cursor-pointer font-bold"
                   >
                     <RefreshCw className="w-3 h-3" />
-                    <span>Acak Ulang</span>
+                    <span>Acak ulang</span>
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   <div>
-                    <label className="block text-[10px] text-[#6F7F8D] font-bold mb-1">
-                      Kode Login (8 Digit)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      maxLength={8}
-                      value={newUserLoginCode}
-                      onChange={e => setNewUserLoginCode(e.target.value.replace(/\D/g, ''))}
-                      className="w-full p-2 rounded-xl border border-[#A9C7DE] bg-white font-mono font-bold tracking-wider text-[#28618F]"
-                    />
+                    <label className="block text-[10px] text-[#6F7F8D] font-bold mb-1">NIM / Kode Login (8 Digit)</label>
+                    <input type="text" required inputMode="numeric" pattern="[0-9]{8}" maxLength={8} value={newUserNim} onChange={e => setNewUserNim(e.target.value.replace(/\D/g, ''))} placeholder="Contoh: 12345678" className="w-full p-2 rounded-xl border border-[#A9C7DE] bg-white font-mono font-bold tracking-wider text-[#28618F]" />
                   </div>
-
                   <div>
                     <label className="block text-[10px] text-[#6F7F8D] font-bold mb-1">
-                      Password Login
+                      Sandi (8 Digit)
                     </label>
                     <input
                       type="text"
                       required
+                      inputMode="numeric"
+                      pattern="[0-9]{8}"
+                      maxLength={8}
                       value={newUserPassword}
-                      onChange={e => setNewUserPassword(e.target.value)}
+                      onChange={e => setNewUserPassword(e.target.value.replace(/\D/g, ''))}
                       className="w-full p-2 rounded-xl border border-[#A9C7DE] bg-white font-mono font-bold text-[#123B59]"
                     />
                   </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[#123B59] font-bold mb-1">Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={newUserEmail}
-                    onChange={e => setNewUserEmail(e.target.value)}
-                    placeholder="user@vokasi.id"
-                    className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[#123B59] font-bold mb-1">No. WhatsApp</label>
-                  <input
-                    type="tel"
-                    value={newUserPhone}
-                    onChange={e => setNewUserPhone(e.target.value)}
-                    placeholder="0812-xxxx-xxxx"
-                    className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59]"
-                  />
                 </div>
               </div>
 
@@ -1034,10 +973,9 @@ export const TraineeManagementView: React.FC = () => {
                           <th className="py-2.5 px-3 w-8">No</th>
                           <th className="py-2.5 px-3 min-w-[140px]">Nama</th>
                           <th className="py-2.5 px-3 min-w-[130px]">Peran (Role)</th>
-                          <th className="py-2.5 px-3 min-w-[100px]">NIM / NIP</th>
+                          <th className="py-2.5 px-3 min-w-[150px]">NIM / Kode Login</th>
                           <th className="py-2.5 px-3 min-w-[110px]">Kejuruan</th>
-                          <th className="py-2.5 px-3 font-mono min-w-[90px]">Kode 8-Digit</th>
-                          <th className="py-2.5 px-3 font-mono min-w-[90px]">Password</th>
+                          <th className="py-2.5 px-3 font-mono min-w-[90px]">Sandi 8 Digit</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#E4EAF0]">
@@ -1056,28 +994,9 @@ export const TraineeManagementView: React.FC = () => {
                                   setParsedImportUsers(prev => {
                                     const next = [...prev];
                                     const targetUser = next[i];
-                                    const newNim = targetUser.nim?.startsWith(newRole === 'mentor' ? 'TRN' : 'MNT')
-                                      ? `${newRole === 'mentor' ? 'MNT' : 'TRN'}-2026-${Math.floor(100 + Math.random() * 900)}`
-                                      : targetUser.nim;
-                                    const newPass =
-                                      newRole === 'mentor' && (!targetUser.password || targetUser.password === '123456')
-                                        ? 'mentor123'
-                                        : newRole === 'trainee' && (!targetUser.password || targetUser.password === 'mentor123')
-                                        ? '123456'
-                                        : targetUser.password;
-                                    const newEmail =
-                                      targetUser.email?.endsWith('student.id') && newRole === 'mentor'
-                                        ? targetUser.email.replace('student.id', 'hadirku.id')
-                                        : targetUser.email?.endsWith('hadirku.id') && newRole === 'trainee'
-                                        ? targetUser.email.replace('hadirku.id', 'student.id')
-                                        : targetUser.email;
-
                                     next[i] = {
                                       ...targetUser,
                                       role: newRole,
-                                      nim: newNim,
-                                      password: newPass,
-                                      email: newEmail,
                                     };
                                     return next;
                                   });
@@ -1092,11 +1011,8 @@ export const TraineeManagementView: React.FC = () => {
                                 <option value="mentor">👨‍🏫 Instruktur (Mentor)</option>
                               </select>
                             </td>
-                            <td className="py-2 px-3 font-mono text-[#6F7F8D]">{u.nim}</td>
+                            <td className="py-2 px-3 font-mono text-[#6F7F8D]">{u.loginCode || u.nim}</td>
                             <td className="py-2 px-3 text-[#6F7F8D]">{u.kejuruanName}</td>
-                            <td className="py-2 px-3 font-mono font-bold text-[#28618F]">
-                              {u.loginCode}
-                            </td>
                             <td className="py-2 px-3 font-mono text-[#6F7F8D]">{u.password}</td>
                           </tr>
                         ))}

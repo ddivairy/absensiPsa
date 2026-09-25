@@ -92,20 +92,6 @@ export const api = {
     return this.request<MeResponse>('/api/auth/me');
   },
 
-  // Switch user (for demo or testing roles)
-  async switchUser(targetUserId: string): Promise<LoginResponse> {
-    const res = await this.request<LoginResponse>('/api/auth/switch-user', {
-      method: 'POST',
-      body: JSON.stringify({ targetUserId }),
-    });
-
-    if (res.token) {
-      this.setToken(res.token);
-    }
-
-    return res;
-  },
-
   // Get all users from TiDB (Admin / Mentor only)
   async getUsers(): Promise<{ success: boolean; users: User[] }> {
     return this.request<{ success: boolean; users: User[] }>('/api/users');

@@ -39,7 +39,6 @@ interface AppContextType {
   jwtToken: string | null;
   tidbStatus: 'connected' | 'connecting' | 'error' | 'offline';
   setActiveTab: (tab: string) => void;
-  switchUser: (userId: string) => Promise<void> | void;
   // Auth methods
   loginWithCode: (code: string, password?: string) => Promise<{ success: boolean; message: string; user?: User }>;
   loginWithAdmin: (identifier: string, password?: string) => Promise<{ success: boolean; message: string; user?: User }>;
@@ -111,7 +110,7 @@ interface AppContextType {
   deleteUser: (id: string) => Promise<{ success: boolean; message: string }>;
   deleteUsersByRole: (role: 'trainee' | 'mentor' | 'all') => Promise<{ success: boolean; count: number; message: string }>;
   importUsers: (importedUsers: Partial<User>[]) => Promise<{ count: number; message: string }>;
-  regenerateUserCredentials: (userId: string) => Promise<{ loginCode: string; password: string }>;
+  regenerateUserCredentials: (userId: string) => Promise<{ loginCode: string; password: string; success: boolean; message?: string }>;
   addKejuruan: (kjData: Omit<Kejuruan, 'id'>) => void;
   updateKejuruan: (id: string, updates: Partial<Kejuruan>) => void;
   updateSettings: (newSettings: Partial<AttendanceSettings>) => void;
@@ -305,28 +304,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Current active user object
   const currentUser = users.find(u => u.id === currentUserId) || users[0];
 
-  const switchUser = async (userId: string) => {
-    const target = users.find(u => u.id === userId);
-    if (target) {
-      try {
-        const res = await api.switchUser(userId);
-        if (res.token) {
-          setJwtToken(res.token);
-        }
-      } catch (err) {
-        console.warn('Switch user via backend failed, using local context:', err);
-      }
-      setCurrentUserId(userId);
-      setIsAuthenticated(true);
-      setActiveTab('dashboard');
-    }
-  };
 
   const loginWithCode = async (
     code: string,
     pass?: string
   ): Promise<{ success: boolean; message: string; user?: User }> => {
     const cleanedCode = code.replace(/\s+/g, '').trim();
+    const localTarget = users.find(
+      u => u.loginCode === cleanedCode || u.nim.toLowerCase() === cleanedCode.toLowerCase() || u.email.toLowerCase() === cleanedCode.toLowerCase()
+    );
 
     // 1. Attempt authentication with TiDB backend and JWT
     try {
@@ -358,24 +344,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         msg.includes('dinonaktifkan') ||
         msg.includes('wajib diisi')
       ) {
+        if (msg.includes('tidak ditemukan') && localTarget) {
+          return {
+            success: false,
+            message: 'Akun ini hanya tersimpan di perangkat dan belum ada di database TiDB. Minta admin tambahkan atau impor ulang akun saat koneksi TiDB tersambung.',
+          };
+        }
         return { success: false, message: msg };
       }
     }
 
     // 2. Offline fallback to local mock data
-    const target = users.find(
-      u => u.loginCode === cleanedCode || u.nim.toLowerCase() === cleanedCode.toLowerCase()
-    );
+    const target = localTarget;
     if (!target) {
       return {
         success: false,
         message: 'Kode 8-digit atau NIM tidak ditemukan. Pastikan kode yang dimasukkan sudah benar.',
       };
     }
-    if (pass && pass.trim()) {
-      if (target.password && target.password !== pass.trim()) {
-        return { success: false, message: 'Password salah untuk akun tersebut.' };
-      }
+    if (target.role === 'admin' && !/^\d{8}$/.test(cleanedCode)) {
+      return { success: false, message: 'Administrator harus masuk menggunakan kode login 8 digit.' };
+    }
+    if (!pass || !pass.trim()) {
+      return { success: false, message: 'Password akun wajib diisi.' };
+    }
+    if (!target.password) {
+      return { success: false, message: 'Sandi akun tidak tersedia untuk login offline. Sambungkan database atau buat ulang kredensial akun.' };
+    }
+    if (target.password !== pass.trim()) {
+      return { success: false, message: 'Password salah untuk akun tersebut.' };
     }
     setCurrentUserId(target.id);
     setIsAuthenticated(true);
@@ -387,73 +384,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     identifier: string,
     pass?: string
   ): Promise<{ success: boolean; message: string; user?: User }> => {
-    const cleanId = identifier.trim();
-
-    // 1. Attempt authentication with TiDB backend and JWT
-    try {
-      const res = await api.login({ identifier: cleanId, password: pass });
-      if (res.success && res.user && res.token) {
-        setJwtToken(res.token);
-        setTidbStatus('connected');
-        setUsers(prev => {
-          const idx = prev.findIndex(u => u.id === res.user!.id);
-          if (idx >= 0) {
-            const next = [...prev];
-            next[idx] = { ...next[idx], ...res.user! };
-            return next;
-          }
-          return [res.user!, ...prev];
-        });
-        setCurrentUserId(res.user.id);
-        setIsAuthenticated(true);
-        setActiveTab('dashboard');
-        return { success: true, message: res.message, user: res.user };
-      }
-    } catch (err: any) {
-      console.warn('TiDB admin login response:', err.message);
-      const msg = err.message || '';
-      if (
-        msg.includes('tidak ditemukan') ||
-        msg.includes('salah') ||
-        msg.includes('dinonaktifkan') ||
-        msg.includes('wajib diisi')
-      ) {
-        return { success: false, message: msg };
-      }
+    const cleanId = identifier.replace(/\s+/g, '').trim();
+    if (!/^\d{8}$/.test(cleanId)) {
+      return { success: false, message: 'Administrator harus masuk menggunakan kode login 8 digit.' };
     }
-
-    // 2. Offline fallback to local mock data
-    const cleanLower = cleanId.toLowerCase();
-    const target = users.find(
-      u =>
-        (u.role === 'admin' || u.role === 'mentor') &&
-        (u.email.toLowerCase() === cleanLower ||
-          u.nim.toLowerCase() === cleanLower ||
-          u.loginCode === cleanLower ||
-          (cleanLower === 'admin' && u.role === 'admin'))
-    );
-
-    if (!target) {
-      if (!cleanLower || cleanLower === 'admin') {
-        const defAdmin = users.find(u => u.role === 'admin') || users[0];
-        setCurrentUserId(defAdmin.id);
-        setIsAuthenticated(true);
-        setActiveTab('dashboard');
-        return { success: true, message: `Selamat datang, ${defAdmin.name}!`, user: defAdmin };
-      }
-      return { success: false, message: 'Akun admin atau mentor tidak ditemukan.' };
-    }
-
-    if (pass && pass.trim() && target.password) {
-      if (target.password !== pass.trim() && pass.trim() !== 'admin123') {
-        return { success: false, message: 'Password salah.' };
-      }
-    }
-
-    setCurrentUserId(target.id);
-    setIsAuthenticated(true);
-    setActiveTab('dashboard');
-    return { success: true, message: `Selamat datang, ${target.name}!`, user: target };
+    return loginWithCode(cleanId, pass);
   };
 
   const logout = () => {
@@ -849,18 +784,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const regenerateUserCredentials = async (
     userId: string
-  ): Promise<{ loginCode: string; password: string }> => {
+  ): Promise<{ loginCode: string; password: string; success: boolean; message?: string }> => {
     const newCode = generate8DigitLoginCode();
     const newPassword = generateDefaultPassword();
     try {
-      await api.updateUser(userId, { loginCode: newCode, password: newPassword });
-    } catch (err) {
+      await api.updateUser(userId, {
+        nim: newCode,
+        loginCode: newCode,
+        email: `${newCode}@hadirku.id`,
+        password: newPassword,
+      });
+    } catch (err: any) {
       console.warn('API regenerateUserCredentials failed:', err);
+      return {
+        loginCode: '',
+        password: '',
+        success: false,
+        message: err.message || 'Gagal memperbarui kredensial di database.',
+      };
     }
     setUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, loginCode: newCode, password: newPassword } : u))
+      prev.map(u =>
+        u.id === userId
+          ? { ...u, nim: newCode, loginCode: newCode, email: `${newCode}@hadirku.id`, password: newPassword }
+          : u
+      )
     );
-    return { loginCode: newCode, password: newPassword };
+    return { loginCode: newCode, password: newPassword, success: true };
   };
 
   // Trainee & Mentor creation via Excel Import
@@ -931,7 +881,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return {
       count: newCount,
-      message: `Berhasil memproses ${importedUsers.length} data (${newCount} akun baru ditambahkan).`,
+      message: `Berhasil memproses ${importedUsers.length} data (${newCount} akun tersimpan hanya di perangkat ini, belum masuk ke database TiDB).`,
     };
   };
 
@@ -1184,7 +1134,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         jwtToken,
         tidbStatus,
         setActiveTab,
-        switchUser,
         loginWithCode,
         loginWithAdmin,
         logout,

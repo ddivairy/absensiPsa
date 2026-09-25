@@ -41,8 +41,11 @@ export function verifyToken(token: string): UserTokenPayload {
 // Compare password (supports both bcrypt hash and plain-text fallback during transition)
 export async function comparePassword(plain: string, hash: string): Promise<boolean> {
   if (!hash) return false;
-  if (hash.startsWith('$2a$') || hash.startsWith('$2b$')) {
-    return bcrypt.compare(plain, hash);
+  if (hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2y$')) {
+    // $2y$ is a bcrypt variant commonly written by PHP and is compatible
+    // with the same bcrypt digest format once normalized to $2b$.
+    const compatibleHash = hash.startsWith('$2y$') ? `$2b$${hash.slice(4)}` : hash;
+    return bcrypt.compare(plain, compatibleHash);
   }
   return plain === hash;
 }

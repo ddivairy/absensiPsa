@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   KeyRound,
-  Shield,
   Eye,
   EyeOff,
   AlertCircle,
@@ -13,19 +12,12 @@ import {
 } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
-  const { loginWithCode, loginWithAdmin, tidbStatus } = useApp();
-
-  const [activeLoginType, setActiveLoginType] = useState<'code' | 'admin'>('code');
+  const { loginWithCode, tidbStatus } = useApp();
 
   // Trainee / Mentor state
   const [loginCode, setLoginCode] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  // Admin state
-  const [adminIdentifier, setAdminIdentifier] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,30 +41,6 @@ export const LoginView: React.FC = () => {
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Gagal memproses login ke database.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAdminSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-    if (!adminIdentifier.trim()) {
-      setErrorMessage('Silakan masukkan email administrator.');
-      return;
-    }
-    if (!adminPassword.trim()) {
-      setErrorMessage('Silakan masukkan password administrator.');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const result = await loginWithAdmin(adminIdentifier.trim(), adminPassword);
-      if (!result.success) {
-        setErrorMessage(result.message);
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Gagal memproses login admin.');
     } finally {
       setIsSubmitting(false);
     }
@@ -120,39 +88,9 @@ export const LoginView: React.FC = () => {
 
         {/* Surface Card Box */}
         <div className="surface rounded-2xl p-6 sm:p-7 shadow-xl space-y-5 bg-white border border-[#E4EAF0]">
-          {/* Tab Selector */}
-          <div className="grid grid-cols-2 p-1 bg-[#F4F6F8] rounded-xl border border-[#E4EAF0]">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveLoginType('code');
-                setErrorMessage('');
-              }}
-              className={`py-2 px-3 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeLoginType === 'code'
-                  ? 'bg-[#123B59] text-white shadow-xs'
-                  : 'text-[#6F7F8D] hover:text-[#123B59]'
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Kode / NIM</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveLoginType('admin');
-                setErrorMessage('');
-              }}
-              className={`py-2 px-3 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeLoginType === 'admin'
-                  ? 'bg-[#123B59] text-white shadow-xs'
-                  : 'text-[#6F7F8D] hover:text-[#123B59]'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Administrator</span>
-            </button>
+          <div className="flex items-center gap-2 text-xs text-[#6F7F8D]">
+            <KeyRound className="w-4 h-4 text-[#4C83B5]" />
+            <span>Masuk dengan kode akun atau NIM. Role diverifikasi otomatis.</span>
           </div>
 
           {/* Error Notification */}
@@ -163,15 +101,15 @@ export const LoginView: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 1: CODE 8 DIGIT / NIM (TRAINEE & MENTOR) */}
-          {activeLoginType === 'code' ? (
+          {/* Satu form untuk semua role; role berasal dari hasil verifikasi akun. */}
+          {
             <form onSubmit={handleCodeSubmit} className="space-y-4 text-xs">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="font-bold text-[#123B59]">
                     Kode Login 8 Digit atau NIM
                   </label>
-                  <span className="text-[10px] text-[#6F7F8D]">Peserta &amp; Mentor</span>
+                  <span className="text-[10px] text-[#6F7F8D]">Semua role</span>
                 </div>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 text-[#6F7F8D] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -231,68 +169,7 @@ export const LoginView: React.FC = () => {
                 )}
               </button>
             </form>
-          ) : (
-            /* TAB 2: ADMIN LOGIN */
-            <form onSubmit={handleAdminSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-[#123B59] mb-1.5">
-                  Email Administrator
-                </label>
-                <div className="relative">
-                  <Shield className="w-4 h-4 text-[#6F7F8D] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    value={adminIdentifier}
-                    onChange={e => setAdminIdentifier(e.target.value)}
-                    placeholder="Masukkan email administrator"
-                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] outline-none focus:border-[#4C83B5] focus:ring-2 focus:ring-[#4C83B5]/20"
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#123B59] mb-1.5">
-                  Password Administrator
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-[#6F7F8D] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type={showAdminPassword ? 'text' : 'password'}
-                    value={adminPassword}
-                    onChange={e => setAdminPassword(e.target.value)}
-                    placeholder="Masukkan password administrator"
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] outline-none focus:border-[#4C83B5] focus:ring-2 focus:ring-[#4C83B5]/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminPassword(!showAdminPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6F7F8D] hover:text-[#123B59] cursor-pointer"
-                  >
-                    {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3.5 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white font-bold transition cursor-pointer shadow-md flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0 text-sm disabled:opacity-75 disabled:pointer-events-none"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-[#A9C7DE]" />
-                    <span>Memverifikasi JWT Admin...</span>
-                  </>
-                ) : (
-                  <>
-                    <Shield className="w-4 h-4 text-[#A9C7DE]" />
-                    <span>Masuk sebagai Administrator</span>
-                  </>
-                )}
-              </button>
-            </form>
-          )}
+          }
         </div>
 
         {/* Footer info */}

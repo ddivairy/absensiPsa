@@ -12,11 +12,6 @@ import {
   Role,
 } from './auth';
 
-function generate8DigitLoginCode(): string {
-  const num = Math.floor(10000000 + Math.random() * 90000000);
-  return num.toString();
-}
-
 dotenv.config();
 
 const app = express();
@@ -77,6 +72,15 @@ app.post('/api/auth/login', async (req, res: Response) => {
 
     const user: DbUser = rows[0];
 
+    // Admin masuk hanya dengan login_code numerik 8 digit; email dan NIM
+    // tetap hanya dapat dipakai untuk role mentor/peserta.
+    if (user.role === 'admin' && !/^\d{8}$/.test(searchKey)) {
+      return res.status(401).json({
+        success: false,
+        message: 'Administrator harus masuk menggunakan kode login 8 digit.',
+      });
+    }
+
     // Check account status
     if (user.status !== 'active') {
       return res.status(403).json({
@@ -85,7 +89,7 @@ app.post('/api/auth/login', async (req, res: Response) => {
       });
     }
 
-    // Verify password if provided
+    // Semua role wajib melalui verifikasi password.
     if (password && password.trim()) {
       const isMatch = await comparePassword(password.trim(), user.password_hash);
       if (!isMatch) {
@@ -95,15 +99,10 @@ app.post('/api/auth/login', async (req, res: Response) => {
         });
       }
     } else {
-      // If no password provided:
-      // Allow only if configured or require password
-      // In this app, admin requires password, mentor and trainee can have optional check or password
-      if (user.role === 'admin') {
-        return res.status(400).json({
-          success: false,
-          message: 'Password administrator wajib diisi.',
-        });
-      }
+      return res.status(400).json({
+        success: false,
+        message: 'Password akun wajib diisi.',
+      });
     }
 
     // Generate JWT token
@@ -199,60 +198,6 @@ app.get('/api/auth/me', authenticateToken, async (req: AuthenticatedRequest, res
   }
 });
 
-// 4. Role-switch endpoint (Allows authorized users or admin to switch role context / generate new token for testing)
-app.post('/api/auth/switch-user', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { targetUserId } = req.body;
-    if (!targetUserId) {
-      return res.status(400).json({ success: false, message: 'Target user ID diperlukan.' });
-    }
-
-    const pool = getPool();
-    const [rows] = await pool.query<any[]>(
-      'SELECT * FROM users WHERE id = ? LIMIT 1',
-      [targetUserId]
-    );
-
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Pengguna target tidak ditemukan.' });
-    }
-
-    const targetUser: DbUser = rows[0];
-    const newToken = generateToken({
-      id: targetUser.id,
-      nim: targetUser.nim,
-      name: targetUser.name,
-      email: targetUser.email,
-      role: targetUser.role,
-      kejuruanId: targetUser.kejuruan_id,
-      kejuruanName: targetUser.kejuruan_name,
-      loginCode: targetUser.login_code,
-    });
-
-    return res.json({
-      success: true,
-      message: `Beralih ke akun ${targetUser.name} (${targetUser.role})`,
-      token: newToken,
-      user: {
-        id: targetUser.id,
-        nim: targetUser.nim,
-        name: targetUser.name,
-        email: targetUser.email,
-        role: targetUser.role,
-        avatar: targetUser.avatar,
-        phone: targetUser.phone,
-        kejuruanId: targetUser.kejuruan_id,
-        kejuruanName: targetUser.kejuruan_name,
-        status: targetUser.status,
-        joinedDate: targetUser.joined_date,
-        loginCode: targetUser.login_code,
-      },
-    });
-  } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // 5. Get Users List from TiDB (RBAC: Admin & Mentor only)
 app.get(
   '/api/users',
@@ -329,10 +274,19 @@ app.post(
         });
       }
 
+      const normalizedNim = String(nim).trim();
+      const code = String(loginCode || normalizedNim).trim();
+      const rawPassword = String(password || '').trim();
+      if (!/^\d{8}$/.test(normalizedNim) || normalizedNim !== code) {
+        return res.status(400).json({ success: false, message: 'NIM/Kode Login harus satu nilai yang sama dan tepat 8 digit angka.' });
+      }
+      if (!/^\d{8}$/.test(rawPassword)) {
+        return res.status(400).json({ success: false, message: 'Sandi harus tepat 8 digit angka.' });
+      }
+
       const pool = getPool();
 
       // Check if email, nim, or loginCode already exists
-      const code = (loginCode || generate8DigitLoginCode()).toString().trim();
       const [dupes] = await pool.query<any[]>(
         'SELECT id, email, nim, login_code FROM users WHERE email = ? OR nim = ? OR login_code = ? LIMIT 1',
         [email.trim(), nim.trim(), code]
@@ -351,7 +305,6 @@ app.post(
       }
 
       const salt = await bcrypt.genSalt(10);
-      const rawPassword = password && password.trim() ? password.trim() : (role === 'mentor' ? 'mentor123' : '123456');
       const passwordHash = await bcrypt.hash(rawPassword, salt);
       const id = `user-${role}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const joinedDate = new Date().toISOString().split('T')[0];
@@ -418,6 +371,24 @@ app.post(
         return res.status(400).json({ success: false, message: 'Daftar data pengguna tidak boleh kosong.' });
       }
 
+      const invalidIndex = users.findIndex((item: any) => {
+        const identifier = String(item?.loginCode || item?.nim || '').trim();
+        const nimValue = String(item?.nim || '').trim();
+        const passwordValue = String(item?.password || '').trim();
+        return !item?.name?.trim() ||
+          !['mentor', 'trainee'].includes(item?.role) ||
+          !/^\d{8}$/.test(identifier) ||
+          nimValue !== identifier ||
+          !/^\d{8}$/.test(passwordValue) ||
+          !item?.kejuruanName?.trim();
+      });
+      if (invalidIndex !== -1) {
+        return res.status(400).json({
+          success: false,
+          message: `Data pengguna pada baris ${invalidIndex + 1} tidak sesuai. Isi nama, NIM/Kode Login 8 digit, sandi 8 digit, program kejuruan, dan role mentor/trainee.`,
+        });
+      }
+
       const pool = getPool();
       let insertedCount = 0;
       const createdUsers = [];
@@ -425,13 +396,11 @@ app.post(
       for (const item of users) {
         if (!item.name || !item.name.trim()) continue;
 
-        const role = item.role === 'mentor' ? 'mentor' : 'trainee';
-        const defaultNim = `${role === 'mentor' ? 'MNT' : 'TRN'}-2026-${Math.floor(100 + Math.random() * 900)}`;
-        const nim = item.nim?.trim() || defaultNim;
-        const defaultEmail = `${item.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@${role === 'mentor' ? 'hadirku.id' : 'student.id'}`;
-        const email = item.email?.trim() || defaultEmail;
-        const code = (item.loginCode || generate8DigitLoginCode()).toString().trim();
-        const rawPassword = item.password?.trim() || (role === 'mentor' ? 'mentor123' : '123456');
+        const role = item.role as 'mentor' | 'trainee';
+        const code = String(item.loginCode || item.nim).trim();
+        const nim = code;
+        const email = item.email?.trim() || `${code}@hadirku.id`;
+        const rawPassword = String(item.password).trim();
 
         // Check if exists
         const [existing] = await pool.query<any[]>(
@@ -445,16 +414,22 @@ app.post(
         if (existing.length > 0) {
           await pool.query(
             `UPDATE users SET
-              name = ?, role = ?, phone = ?, kejuruan_id = ?, kejuruan_name = ?,
-              status = ?, password_hash = ?
+              nim = ?, name = ?, email = ?, role = ?, avatar = ?, phone = ?,
+              kejuruan_id = ?, kejuruan_name = ?, status = ?, joined_date = ?,
+              login_code = ?, password_hash = ?
              WHERE id = ?`,
             [
+              nim,
               item.name.trim(),
+              email,
               role,
+              item.avatar || null,
               item.phone || null,
               item.kejuruanId || null,
               item.kejuruanName || null,
               item.status || 'active',
+              item.joinedDate || new Date().toISOString().split('T')[0],
+              code,
               hash,
               existing[0].id,
             ]
