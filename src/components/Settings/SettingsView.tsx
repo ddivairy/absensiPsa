@@ -8,7 +8,7 @@ export const SettingsView: React.FC = () => {
   const [startTime, setStartTime] = useState(settings.startTime);
   const [lateLimitTime, setLateLimitTime] = useState(settings.lateLimitTime);
   const [endTime, setEndTime] = useState(settings.endTime);
-  const [locationName, setLocationName] = useState(settings.officeLocation.name || 'Punya Skill Akademi, Bandung');
+  const [locationName, setLocationName] = useState(settings.officeLocation.name || 'Punya Skill Akademi, Bandung, Jawa Barat');
   const [radiusMeters, setRadiusMeters] = useState(settings.officeLocation.radiusMeters);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
