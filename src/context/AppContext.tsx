@@ -44,8 +44,8 @@ interface AppContextType {
   loginWithAdmin: (identifier: string, password?: string) => Promise<{ success: boolean; message: string; user?: User }>;
   logout: () => void;
   // Clock in/out actions
-  clockIn: (notes?: string, photoUrl?: string) => { success: boolean; message: string };
-  clockOut: (notes?: string) => { success: boolean; message: string };
+  clockIn: (notes?: string, photoUrl?: string, coordinates?: { lat: number; lng: number }, workMode?: 'WFO' | 'WFH') => { success: boolean; message: string };
+  clockOut: (notes?: string, coordinates?: { lat: number; lng: number }) => { success: boolean; message: string };
   getTodayRecordForUser: (userId: string) => AttendanceRecord | undefined;
   // Leave request actions
   submitLeaveRequest: (req: {
@@ -240,7 +240,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [settings, setSettings] = useState<AttendanceSettings>(() => {
     const saved = localStorage.getItem('hadirku_settings_v2');
-    return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
+    if (!saved) return INITIAL_SETTINGS;
+
+    const parsed = JSON.parse(saved) as AttendanceSettings;
+    const legacyJakartaPin = parsed.officeLocation?.lat === -6.2088 && parsed.officeLocation?.lng === 106.8456;
+    return {
+      ...INITIAL_SETTINGS,
+      ...parsed,
+      officeLocation: {
+        ...INITIAL_SETTINGS.officeLocation,
+        ...parsed.officeLocation,
+        ...(legacyJakartaPin ? {
+          lat: INITIAL_SETTINGS.officeLocation.lat,
+          lng: INITIAL_SETTINGS.officeLocation.lng
+        } : {})
+      }
+    };
   });
 
   const [missions, setMissions] = useState<Mission[]>(() => {
@@ -404,12 +419,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Clock In
-  const clockIn = (notes?: string, photoUrl?: string): { success: boolean; message: string } => {
+  const clockIn = (notes?: string, photoUrl?: string, coordinates?: { lat: number; lng: number }, workMode: 'WFO' | 'WFH' = 'WFO'): { success: boolean; message: string } => {
     const today = getTodayDateString();
     const existing = getTodayRecordForUser(currentUser.id);
 
     if (existing && existing.checkInTime) {
       return { success: false, message: 'Anda sudah melakukan Check-In untuk hari ini!' };
+    }
+
+    if (coordinates && workMode === 'WFO') {
+      const toRadians = (degrees: number) => degrees * Math.PI / 180;
+      const dLat = toRadians(coordinates.lat - settings.officeLocation.lat);
+      const dLng = toRadians(coordinates.lng - settings.officeLocation.lng);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(settings.officeLocation.lat)) * Math.cos(toRadians(coordinates.lat)) * Math.sin(dLng / 2) ** 2;
+      const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (distance > settings.officeLocation.radiusMeters) {
+        return { success: false, message: `Lokasi Anda sekitar ${Math.round(distance)} m dari ${settings.officeLocation.name}. Presensi hanya dapat dilakukan dalam radius ${settings.officeLocation.radiusMeters} m.` };
+      }
     }
 
     const currentTime = getCurrentTimeWIB();
@@ -442,11 +468,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       verificationStatus,
       verifiedBy,
       verifiedAt,
-      location: settings.officeLocation.name,
-      coordinates: {
+      location: workMode === 'WFH' ? 'WFH · lokasi GPS peserta' : settings.officeLocation.name,
+      workMode,
+      coordinates: coordinates || {
         lat: settings.officeLocation.lat,
         lng: settings.officeLocation.lng
       },
+      checkInCoordinates: coordinates,
       notes: notes || (isLate ? 'Terlambat check-in' : 'Hadir tepat waktu'),
       photoUrl: photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
     };
@@ -479,7 +507,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Clock Out
-  const clockOut = (notes?: string): { success: boolean; message: string } => {
+  const clockOut = (notes?: string, coordinates?: { lat: number; lng: number }, workMode?: 'WFO' | 'WFH'): { success: boolean; message: string } => {
     const today = getTodayDateString();
     const existing = getTodayRecordForUser(currentUser.id);
 
@@ -491,6 +519,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'Anda sudah melakukan Check-Out sebelumnya.' };
     }
 
+    if (coordinates && (workMode || existing.workMode || 'WFO') === 'WFO') {
+      const toRadians = (degrees: number) => degrees * Math.PI / 180;
+      const dLat = toRadians(coordinates.lat - settings.officeLocation.lat);
+      const dLng = toRadians(coordinates.lng - settings.officeLocation.lng);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(settings.officeLocation.lat)) * Math.cos(toRadians(coordinates.lat)) * Math.sin(dLng / 2) ** 2;
+      const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (distance > settings.officeLocation.radiusMeters) {
+        return { success: false, message: `Lokasi Anda sekitar ${Math.round(distance)} m dari ${settings.officeLocation.name}. Presensi hanya dapat dilakukan dalam radius ${settings.officeLocation.radiusMeters} m.` };
+      }
+    }
+
     const currentTime = getCurrentTimeWIB();
 
     setAttendanceRecords(prev =>
@@ -499,6 +538,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return {
             ...r,
             checkOutTime: currentTime,
+            coordinates: coordinates || r.coordinates,
+            checkOutCoordinates: coordinates,
             notes: notes ? `${r.notes || ''} | Selesai: ${notes}` : r.notes
           };
         }

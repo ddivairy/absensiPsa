@@ -425,6 +425,11 @@ export const MentorDashboard: React.FC = () => {
                           <div className="text-[10px] text-[#6F7F8D] font-mono">
                             NIM: {trainee.nim}
                           </div>
+                          {record && <div className="mt-1 flex flex-wrap gap-x-2 text-[10px]">
+                            <span className="font-bold text-[#28618F]">{record.workMode || 'WFO'}</span>
+                            {(record.checkInCoordinates || record.coordinates) && <a className="text-[#28618F] hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${(record.checkInCoordinates || record.coordinates)!.lat},${(record.checkInCoordinates || record.coordinates)!.lng}`}>Check-in Maps</a>}
+                            {record.checkOutCoordinates && <a className="text-[#28618F] hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${record.checkOutCoordinates.lat},${record.checkOutCoordinates.lng}`}>Check-out Maps</a>}
+                          </div>}
                         </div>
                       </div>
                     </td>

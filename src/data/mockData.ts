@@ -315,9 +315,9 @@ export const INITIAL_SETTINGS: AttendanceSettings = {
   allowCheckoutStart: '16:00',
   workDays: [1, 2, 3, 4, 5], // Mon-Fri
   officeLocation: {
-    lat: -6.2088,
-    lng: 106.8456,
-    name: 'Punya Skill Akademi, Bandung',
+    lat: -6.921024681282541,
+    lng: 107.6750205521894,
+    name: 'Punya Skill Akademi HQ, Jl. Puri Ayu Pratama No.Kavling 9A, Sukamiskin, Arcamanik, Bandung',
     radiusMeters: 100
   }
 };
@@ -548,7 +548,7 @@ export function generateInitialAttendance(): AttendanceRecord[] {
         verifiedBy,
         verifiedAt: verifiedBy ? `${date} 09:00:00` : undefined,
         location: 'Punya Skill Akademi, Bandung',
-        coordinates: { lat: -6.2088, lng: 106.8456 },
+        coordinates: { lat: -6.921024681282541, lng: 107.6750205521894 },
         notes
       });
     });

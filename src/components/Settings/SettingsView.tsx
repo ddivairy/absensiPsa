@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Clock, MapPin, Save, CheckCircle2, ShieldCheck, UserCheck, GraduationCap } from 'lucide-react';
+import { Clock, MapPin, Save, CheckCircle2, ShieldCheck, UserCheck, GraduationCap, LocateFixed } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
   const { settings, updateSettings, resetToDefaultData } = useApp();
@@ -10,6 +10,9 @@ export const SettingsView: React.FC = () => {
   const [endTime, setEndTime] = useState(settings.endTime);
   const [locationName, setLocationName] = useState(settings.officeLocation.name || 'Punya Skill Akademi, Bandung');
   const [radiusMeters, setRadiusMeters] = useState(settings.officeLocation.radiusMeters);
+  const [officeLat, setOfficeLat] = useState(settings.officeLocation.lat);
+  const [officeLng, setOfficeLng] = useState(settings.officeLocation.lng);
+  const [locationError, setLocationError] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
@@ -19,7 +22,8 @@ export const SettingsView: React.FC = () => {
       lateLimitTime,
       endTime,
       officeLocation: {
-        ...settings.officeLocation,
+        lat: Number(officeLat),
+        lng: Number(officeLng),
         name: locationName,
         radiusMeters: Number(radiusMeters)
       }
@@ -146,6 +150,29 @@ export const SettingsView: React.FC = () => {
                 className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5]"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-[#123B59] font-bold mb-1.5">Latitude Kampus</label>
+              <input type="number" step="any" value={officeLat} onChange={e => setOfficeLat(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5]" required />
+            </div>
+            <div>
+              <label className="block text-[#123B59] font-bold mb-1.5">Longitude Kampus</label>
+              <input type="number" step="any" value={officeLng} onChange={e => setOfficeLng(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5]" required />
+            </div>
+            <div className="sm:col-span-3 flex flex-wrap items-center gap-3">
+              <button type="button" onClick={() => {
+                if (!navigator.geolocation) { setLocationError('Perangkat ini tidak mendukung GPS.'); return; }
+                setLocationError('');
+                navigator.geolocation.getCurrentPosition(position => {
+                  setOfficeLat(Number(position.coords.latitude.toFixed(6)));
+                  setOfficeLng(Number(position.coords.longitude.toFixed(6)));
+                }, () => setLocationError('Lokasi kampus tidak terdeteksi. Izinkan akses GPS saat berada di Punya Skill Akademi, Bandung.'), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+              }} className="inline-flex items-center gap-2 rounded-xl border border-[#C8DCEB] bg-[#EEF6FB] px-3 py-2.5 font-bold text-[#28618F]">
+                <LocateFixed className="h-4 w-4" /> Ambil pin GPS kampus dari lokasi saat ini
+              </button>
+              <a className="text-xs font-semibold text-[#28618F] hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${officeLat},${officeLng}`}>Cek pin di Google Maps</a>
+              {locationError && <p role="alert" className="w-full text-xs font-semibold text-[#B84469]">{locationError}</p>}
+              <p className="w-full text-[11px] leading-relaxed text-[#6F7F8D]">Admin perlu mengatur pin ini satu kali saat berada tepat di lokasi Punya Skill Akademi. Presensi WFO memakai pin ini dengan radius 100 m.</p>
             </div>
           </div>
         </div>
