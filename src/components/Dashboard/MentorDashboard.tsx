@@ -189,25 +189,6 @@ export const MentorDashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportClassExcel}
-            className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Excel Kelas</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleExportClassPDF}
-            className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <FileText className="w-3.5 h-3.5 text-[#D95B83]" />
-            <span>PDF Kelas</span>
-          </button>
-        </div>
       </div>
 
       {/* SECTION 1: PRESENSI MANDIRI MENTOR (Diverifikasi oleh Admin) */}
