@@ -301,6 +301,10 @@ export const TraineeManagementView: React.FC = () => {
     const result = await importUsers(parsedImportUsers);
     setIsProcessingImport(false);
     showToast(result.message);
+    if (!result.success) {
+      setImportError(result.message);
+      return;
+    }
     setIsImportModalOpen(false);
     setImportingFile(null);
     setParsedImportUsers([]);

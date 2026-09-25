@@ -24,6 +24,14 @@ function readEightDigitValue(value: unknown): string {
   return value == null ? '' : String(value).trim();
 }
 
+function importedKejuruanId(programName: string): string {
+  let hash = 2166136261;
+  for (const char of programName.trim().toLowerCase()) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  }
+  return `kj-import-${(hash >>> 0).toString(36)}`;
+}
+
 /**
  * Export Trainees, Mentors, or All Users to Excel format (.xlsx)
  */
@@ -264,13 +272,6 @@ export async function parseUsersFromExcelFile(
             error: `Program Kejuruan pada baris ${r + 1} kosong. Isi nama program sesuai data Excel.`,
           };
         }
-        const programSlug = programValue
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '') || 'program';
-
         // NIM and login code use the same eight-digit account identifier.
         const rawCode = rawIdentifier;
 
@@ -287,7 +288,7 @@ export async function parseUsersFromExcelFile(
           name: rawName,
           nim: rawIdentifier,
           role: finalRole,
-          kejuruanId: targetKj?.id || `kj-import-${programSlug}`,
+          kejuruanId: targetKj?.id || importedKejuruanId(programValue),
           kejuruanName: targetKj?.name || programValue,
           loginCode: rawCode,
           password: rawPass,

@@ -2,6 +2,7 @@ import express, { Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { getPool, initDatabase, DbUser } from './db';
+import { appDataRouter } from './appData';
 import bcrypt from 'bcryptjs';
 import {
   generateToken,
@@ -17,8 +18,17 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+function importedKejuruanId(programName: string): string {
+  let hash = 2166136261;
+  for (const char of programName.trim().toLowerCase()) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  }
+  return `kj-import-${(hash >>> 0).toString(36)}`;
+}
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+app.use('/api/app-data', appDataRouter);
 
 // 1. Health check & DB status
 app.get('/api/health', async (_req, res) => {
@@ -389,30 +399,70 @@ app.post(
         });
       }
 
-      const pool = getPool();
-      let insertedCount = 0;
-      const createdUsers = [];
-
-      for (const item of users) {
-        if (!item.name || !item.name.trim()) continue;
-
-        const role = item.role as 'mentor' | 'trainee';
+      const seenIdentifiers = new Set<string>();
+      const seenEmails = new Set<string>();
+      const duplicateIndex = users.findIndex((item: any) => {
         const code = String(item.loginCode || item.nim).trim();
-        const nim = code;
-        const email = item.email?.trim() || `${code}@hadirku.id`;
-        const rawPassword = String(item.password).trim();
+        const email = String(item.email || `${code}@hadirku.id`).trim().toLowerCase();
+        if (seenIdentifiers.has(code) || seenEmails.has(email)) return true;
+        seenIdentifiers.add(code);
+        seenEmails.add(email);
+        return false;
+      });
+      if (duplicateIndex !== -1) {
+        return res.status(400).json({
+          success: false,
+          message: `Kode login atau email duplikat pada baris ${duplicateIndex + 1}. Setiap akun harus memakai kode dan email unik.`,
+        });
+      }
 
-        // Check if exists
-        const [existing] = await pool.query<any[]>(
-          'SELECT id FROM users WHERE email = ? OR nim = ? OR login_code = ? LIMIT 1',
-          [email, nim, code]
-        );
+      const pool = getPool();
+      const connection = await pool.getConnection();
+      let insertedCount = 0;
+      let processedCount = 0;
+      const createdUsers: any[] = [];
 
-        const salt = await bcrypt.genSalt(10);
-        const hash = await bcrypt.hash(rawPassword, salt);
+      try {
+        await connection.beginTransaction();
+        for (let rowIndex = 0; rowIndex < users.length; rowIndex++) {
+          const item = users[rowIndex];
+          if (!item.name || !item.name.trim()) continue;
+          processedCount++;
 
-        if (existing.length > 0) {
-          await pool.query(
+          const role = item.role as 'mentor' | 'trainee';
+          const code = String(item.loginCode || item.nim).trim();
+          const nim = code;
+          const email = item.email?.trim() || `${code}@hadirku.id`;
+          const rawPassword = String(item.password).trim();
+          const kejuruanName = String(item.kejuruanName).trim();
+          let kejuruanId = String(item.kejuruanId || '').trim();
+          if (kejuruanId.startsWith('kj-import-') || kejuruanId.length > 64) {
+            kejuruanId = importedKejuruanId(kejuruanName);
+            const programHash = kejuruanId.slice('kj-import-'.length);
+            await connection.query(
+              `INSERT INTO kejuruan (id,name,code,category,color,description)
+               VALUES (?,?,?,'Lainnya','#4C83B5','Program ditambahkan melalui impor akun.')
+               ON DUPLICATE KEY UPDATE name=VALUES(name)`,
+              [kejuruanId, kejuruanName, `IMP-${programHash}`]
+            );
+          }
+
+          const [existing] = await connection.query<any[]>(
+            'SELECT id, role FROM users WHERE email = ? OR nim = ? OR login_code = ? LIMIT 2',
+            [email, nim, code]
+          );
+          if (existing.some(user => user.role === 'admin')) {
+            throw Object.assign(new Error(`Baris ${rowIndex + 1} memakai kredensial akun administrator.`), { code: 'IMPORT_ADMIN_COLLISION', rowIndex });
+          }
+          if (existing.length > 1) {
+            throw Object.assign(new Error(`Baris ${rowIndex + 1} mencocokkan lebih dari satu akun lama.`), { code: 'IMPORT_ACCOUNT_COLLISION', rowIndex });
+          }
+
+          const salt = await bcrypt.genSalt(10);
+          const hash = await bcrypt.hash(rawPassword, salt);
+
+          if (existing.length > 0) {
+            await connection.query(
             `UPDATE users SET
               nim = ?, name = ?, email = ?, role = ?, avatar = ?, phone = ?,
               kejuruan_id = ?, kejuruan_name = ?, status = ?, joined_date = ?,
@@ -425,20 +475,20 @@ app.post(
               role,
               item.avatar || null,
               item.phone || null,
-              item.kejuruanId || null,
-              item.kejuruanName || null,
+              kejuruanId || null,
+              kejuruanName || null,
               item.status || 'active',
               item.joinedDate || new Date().toISOString().split('T')[0],
               code,
               hash,
               existing[0].id,
             ]
-          );
-        } else {
-          const id = `user-${role}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-          const joinedDate = item.joinedDate || new Date().toISOString().split('T')[0];
+            );
+          } else {
+            const id = `user-${role}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+            const joinedDate = item.joinedDate || new Date().toISOString().split('T')[0];
 
-          await pool.query(
+            await connection.query(
             `INSERT INTO users (
               id, nim, name, email, role, avatar, phone, kejuruan_id, kejuruan_name,
               status, joined_date, login_code, password_hash
@@ -451,16 +501,16 @@ app.post(
               role,
               item.avatar || null,
               item.phone || null,
-              item.kejuruanId || null,
-              item.kejuruanName || null,
+              kejuruanId || null,
+              kejuruanName || null,
               item.status || 'active',
               joinedDate,
               code,
               hash,
             ]
-          );
+            );
 
-          createdUsers.push({
+            createdUsers.push({
             id,
             nim,
             name: item.name.trim(),
@@ -472,9 +522,23 @@ app.post(
             joinedDate,
             loginCode: code,
             password: rawPassword,
-          });
-          insertedCount++;
+            });
+            insertedCount++;
+          }
         }
+        await connection.commit();
+      } catch (error: any) {
+        await connection.rollback();
+        const rowNumber = Number.isInteger(error.rowIndex) ? error.rowIndex + 1 : undefined;
+        const message = error.code === 'ER_DUP_ENTRY'
+          ? `Impor gagal pada baris ${rowNumber || '?'}: kode login, NIM, atau email sudah digunakan akun lain.`
+          : error.code?.startsWith('IMPORT_')
+          ? error.message
+          : `Gagal mengimpor data ke TiDB${rowNumber ? ` pada baris ${rowNumber}` : ''}. Periksa panjang data dan pastikan kode/email tidak duplikat.`;
+        console.error('[Batch Import Error]', { code: error.code, row: rowNumber, message: error.message });
+        return res.status(400).json({ success: false, message, errorCode: error.code || 'BATCH_IMPORT_FAILED' });
+      } finally {
+        connection.release();
       }
 
       const traineeCount = users.filter((u: any) => u.role === 'trainee').length;
@@ -482,15 +546,15 @@ app.post(
 
       return res.json({
         success: true,
-        count: insertedCount,
+        count: processedCount,
         traineeCount,
         mentorCount,
-        message: `Berhasil mengimpor ${insertedCount} akun (${traineeCount} Peserta Magang, ${mentorCount} Instruktur Mentor) ke database TiDB.`,
+        message: `Berhasil memproses ${processedCount} akun (${traineeCount} Peserta Magang, ${mentorCount} Instruktur Mentor) di database TiDB. ${insertedCount} akun baru ditambahkan.`,
         createdUsers,
       });
     } catch (error: any) {
-      console.error('[Batch Import Error]', error);
-      return res.status(500).json({ success: false, message: 'Gagal mengimpor ke database TiDB.', error: error.message });
+      console.error('[Batch Import Error]', { code: error.code, message: error.message });
+      return res.status(500).json({ success: false, message: 'Gagal terhubung ke TiDB untuk memproses impor.', errorCode: error.code || 'DATABASE_ERROR' });
     }
   }
 );

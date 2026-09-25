@@ -13,13 +13,9 @@ import {
   DailyReportStatus
 } from '../types';
 import {
-  INITIAL_USERS,
   INITIAL_KEJURUAN,
   INITIAL_SETTINGS,
-  INITIAL_LEAVE_REQUESTS,
-  generateInitialAttendance
 } from '../data/mockData';
-import { INITIAL_MISSIONS, INITIAL_SUBMISSIONS } from '../data/missionsData';
 import { getTodayDateString, getCurrentTimeWIB } from '../utils/dateUtils';
 import { generate8DigitLoginCode, generateDefaultPassword } from '../utils/userExcelUtils';
 import confetti from 'canvas-confetti';
@@ -109,7 +105,7 @@ interface AppContextType {
   updateUser: (id: string, updates: Partial<User>) => Promise<{ success: boolean; message: string }>;
   deleteUser: (id: string) => Promise<{ success: boolean; message: string }>;
   deleteUsersByRole: (role: 'trainee' | 'mentor' | 'all') => Promise<{ success: boolean; count: number; message: string }>;
-  importUsers: (importedUsers: Partial<User>[]) => Promise<{ count: number; message: string }>;
+  importUsers: (importedUsers: Partial<User>[]) => Promise<{ success: boolean; count: number; message: string }>;
   regenerateUserCredentials: (userId: string) => Promise<{ loginCode: string; password: string; success: boolean; message?: string }>;
   addKejuruan: (kjData: Omit<Kejuruan, 'id'>) => void;
   updateKejuruan: (id: string, updates: Partial<Kejuruan>) => void;
@@ -120,42 +116,16 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load initial states from localStorage if available
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('hadirku_users_v2');
-    if (saved) {
-      try {
-        const parsed: User[] = JSON.parse(saved);
-        // Ensure all users have loginCode and password
-        return parsed.map(u => {
-          const matchInitial = INITIAL_USERS.find(iu => iu.id === u.id || iu.nim === u.nim);
-          return {
-            ...u,
-            loginCode: u.loginCode || matchInitial?.loginCode || generate8DigitLoginCode(),
-            password: u.password || matchInitial?.password || '123456'
-          };
-        });
-      } catch {
-        return INITIAL_USERS;
-      }
-    }
-    return INITIAL_USERS;
-  });
-
-  const [currentUserId, setCurrentUserId] = useState<string>(() => {
-    const saved = localStorage.getItem('hadirku_current_user_id_v2');
-    return saved || INITIAL_USERS[0].id; // Default Admin
-  });
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
 
   const [jwtToken, setJwtToken] = useState<string | null>(() => api.getToken());
   const [tidbStatus, setTidbStatus] = useState<'connected' | 'connecting' | 'error' | 'offline'>('connecting');
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    const token = api.getToken();
-    if (token) return true;
-    const saved = localStorage.getItem('hadirku_auth_v2');
-    return saved !== null ? saved === 'true' : false;
+    return Boolean(api.getToken());
   });
+  const [appDataReady, setAppDataReady] = useState(false);
 
   // Verify JWT session and check TiDB health on startup
   useEffect(() => {
@@ -179,6 +149,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           const res = await api.getMe();
           if (isMounted && res.success && res.user) {
+            setUsers([res.user]);
             setCurrentUserId(res.user.id);
             setIsAuthenticated(true);
             if (res.user.role === 'admin' || res.user.role === 'mentor') {
@@ -224,85 +195,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const [kejuruanList, setKejuruanList] = useState<Kejuruan[]>(() => {
-    const saved = localStorage.getItem('hadirku_kejuruan_v2');
-    return saved ? JSON.parse(saved) : INITIAL_KEJURUAN;
+    return INITIAL_KEJURUAN;
   });
 
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {
-    const saved = localStorage.getItem('hadirku_attendance_v2');
-    return saved ? JSON.parse(saved) : generateInitialAttendance();
-  });
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => {
-    const saved = localStorage.getItem('hadirku_leave_requests_v2');
-    return saved ? JSON.parse(saved) : INITIAL_LEAVE_REQUESTS;
-  });
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
 
-  const [settings, setSettings] = useState<AttendanceSettings>(() => {
-    const saved = localStorage.getItem('hadirku_settings_v2');
-    return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
-  });
+  const [settings, setSettings] = useState<AttendanceSettings>(INITIAL_SETTINGS);
 
-  const [missions, setMissions] = useState<Mission[]>(() => {
-    const saved = localStorage.getItem('hadirku_missions_v1');
-    return saved ? JSON.parse(saved) : INITIAL_MISSIONS;
-  });
+  const [missions, setMissions] = useState<Mission[]>([]);
 
-  const [missionSubmissions, setMissionSubmissions] = useState<MissionSubmission[]>(() => {
-    const saved = localStorage.getItem('hadirku_submissions_v1');
-    return saved ? JSON.parse(saved) : INITIAL_SUBMISSIONS;
-  });
+  const [missionSubmissions, setMissionSubmissions] = useState<MissionSubmission[]>([]);
 
-  const [dailyReports, setDailyReports] = useState<DailyReport[]>(() => {
-    const saved = localStorage.getItem('hadirku_daily_reports_v1');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [dailyReports, setDailyReports] = useState<DailyReport[]>([]);
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
-  // Synchronize to localStorage
-  useEffect(() => {
-    localStorage.setItem('hadirku_users_v2', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('hadirku_current_user_id_v2', currentUserId);
-  }, [currentUserId]);
-
-  useEffect(() => {
-    localStorage.setItem('hadirku_auth_v2', String(isAuthenticated));
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    localStorage.setItem('hadirku_kejuruan_v2', JSON.stringify(kejuruanList));
-  }, [kejuruanList]);
-
-  useEffect(() => {
-    localStorage.setItem('hadirku_attendance_v2', JSON.stringify(attendanceRecords));
-  }, [attendanceRecords]);
-
-  useEffect(() => {
-    localStorage.setItem('hadirku_leave_requests_v2', JSON.stringify(leaveRequests));
-  }, [leaveRequests]);
-
-  useEffect(() => {
-    localStorage.setItem('hadirku_settings_v2', JSON.stringify(settings));
-  }, [settings]);
-
-  useEffect(() => {
-    localStorage.setItem('hadirku_missions_v1', JSON.stringify(missions));
-  }, [missions]);
-
-  useEffect(() => {
-    localStorage.setItem('hadirku_submissions_v1', JSON.stringify(missionSubmissions));
-  }, [missionSubmissions]);
-
-  useEffect(() => {
-    localStorage.setItem('hadirku_daily_reports_v1', JSON.stringify(dailyReports));
-  }, [dailyReports]);
-
   // Current active user object
-  const currentUser = users.find(u => u.id === currentUserId) || users[0];
+  const currentUser = users.find(u => u.id === currentUserId) || ({} as User);
+
+  useEffect(() => {
+    if (!isAuthenticated || !jwtToken || !currentUser.id || !currentUser.role) {
+      setAppDataReady(false);
+      return;
+    }
+    let active = true;
+    setAppDataReady(false);
+    api.getAppData().then(data => {
+      if (!active) return;
+      setKejuruanList(data.kejuruanList.length ? data.kejuruanList : INITIAL_KEJURUAN);
+      setAttendanceRecords(data.attendanceRecords);
+      setLeaveRequests(data.leaveRequests);
+      setMissions(data.missions);
+      setMissionSubmissions(data.missionSubmissions);
+      setDailyReports(data.dailyReports);
+      if (data.settings) setSettings(data.settings);
+      setTidbStatus('connected');
+      setAppDataReady(true);
+    }).catch(error => {
+      if (!active) return;
+      console.error('[TiDB] Gagal memuat data project:', error);
+      setTidbStatus('offline');
+      setAppDataReady(false);
+    });
+    return () => { active = false; };
+  }, [isAuthenticated, jwtToken, currentUserId, currentUser.id, currentUser.role]);
+
+  useEffect(() => {
+    if (!appDataReady || !isAuthenticated || !jwtToken) return;
+    const timer = window.setTimeout(async () => {
+      const isAdmin = currentUser.role === 'admin';
+      const isTrainee = currentUser.role === 'trainee';
+      try {
+        await api.saveAppData({
+          kejuruanList: isAdmin ? kejuruanList : [],
+          attendanceRecords,
+          leaveRequests,
+          settings: isAdmin ? settings : null,
+          missions: isTrainee ? [] : missions,
+          missionSubmissions,
+          dailyReports,
+        });
+        setTidbStatus('connected');
+      } catch (error) {
+        console.error('[TiDB] Gagal menyimpan data project:', error);
+        setTidbStatus('offline');
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [appDataReady, isAuthenticated, jwtToken, currentUser.role, kejuruanList, attendanceRecords, leaveRequests, settings, missions, missionSubmissions, dailyReports]);
 
 
   const loginWithCode = async (
@@ -310,11 +272,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     pass?: string
   ): Promise<{ success: boolean; message: string; user?: User }> => {
     const cleanedCode = code.replace(/\s+/g, '').trim();
-    const localTarget = users.find(
-      u => u.loginCode === cleanedCode || u.nim.toLowerCase() === cleanedCode.toLowerCase() || u.email.toLowerCase() === cleanedCode.toLowerCase()
-    );
-
-    // 1. Attempt authentication with TiDB backend and JWT
     try {
       const res = await api.login({ code: cleanedCode, password: pass });
       if (res.success && res.user && res.token) {
@@ -335,49 +292,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: true, message: res.message, user: res.user };
       }
     } catch (err: any) {
-      console.warn('TiDB backend login response:', err.message);
-      // If the backend actively rejected with an invalid password or invalid account, return that directly
-      const msg = err.message || '';
-      if (
-        msg.includes('tidak ditemukan') ||
-        msg.includes('salah') ||
-        msg.includes('dinonaktifkan') ||
-        msg.includes('wajib diisi')
-      ) {
-        if (msg.includes('tidak ditemukan') && localTarget) {
-          return {
-            success: false,
-            message: 'Akun ini hanya tersimpan di perangkat dan belum ada di database TiDB. Minta admin tambahkan atau impor ulang akun saat koneksi TiDB tersambung.',
-          };
-        }
-        return { success: false, message: msg };
-      }
+      return { success: false, message: err.message || 'Tidak dapat terhubung ke server TiDB.' };
     }
-
-    // 2. Offline fallback to local mock data
-    const target = localTarget;
-    if (!target) {
-      return {
-        success: false,
-        message: 'Kode 8-digit atau NIM tidak ditemukan. Pastikan kode yang dimasukkan sudah benar.',
-      };
-    }
-    if (target.role === 'admin' && !/^\d{8}$/.test(cleanedCode)) {
-      return { success: false, message: 'Administrator harus masuk menggunakan kode login 8 digit.' };
-    }
-    if (!pass || !pass.trim()) {
-      return { success: false, message: 'Password akun wajib diisi.' };
-    }
-    if (!target.password) {
-      return { success: false, message: 'Sandi akun tidak tersedia untuk login offline. Sambungkan database atau buat ulang kredensial akun.' };
-    }
-    if (target.password !== pass.trim()) {
-      return { success: false, message: 'Password salah untuk akun tersebut.' };
-    }
-    setCurrentUserId(target.id);
-    setIsAuthenticated(true);
-    setActiveTab('dashboard');
-    return { success: true, message: `Selamat datang, ${target.name}!`, user: target };
+    return { success: false, message: 'Login gagal.' };
   };
 
   const loginWithAdmin = async (
@@ -395,7 +312,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     api.clearToken();
     setJwtToken(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('hadirku_auth_v2');
+    setCurrentUserId('');
+    setUsers([]);
+    setAppDataReady(false);
   };
 
   const getTodayRecordForUser = (userId: string): AttendanceRecord | undefined => {
@@ -702,25 +621,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err: any) {
       console.warn('API createUser failed:', err.message);
-      if (err.message && !err.message.includes('Failed to fetch')) {
-        return { success: false, message: err.message };
-      }
+      return { success: false, message: err.message || 'Tidak dapat menyimpan pengguna ke TiDB.' };
     }
-
-    // Local fallback if offline
-    const id = `user-${userData.role}-${Date.now()}`;
-    const newUser: User = {
-      id,
-      ...userData,
-      loginCode: userData.loginCode || generate8DigitLoginCode(),
-      password: userData.password || generateDefaultPassword(),
-    };
-    setUsers(prev => [newUser, ...prev]);
-    return {
-      success: true,
-      message: `Akun ${newUser.role} berhasil dibuat (tersimpan lokal).`,
-      user: newUser,
-    };
+    return { success: false, message: 'Tidak dapat menyimpan pengguna ke TiDB.' };
   };
 
   const updateUser = async (
@@ -731,6 +634,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await api.updateUser(id, updates);
     } catch (err: any) {
       console.warn('API updateUser failed:', err);
+      return { success: false, message: err.message || 'Tidak dapat memperbarui pengguna di TiDB.' };
     }
     setUsers(prev => prev.map(u => (u.id === id ? { ...u, ...updates } : u)));
     return { success: true, message: 'Data pengguna berhasil diperbarui.' };
@@ -743,8 +647,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: true, message: res.message || 'Pengguna berhasil dihapus dari TiDB.' };
     } catch (err: any) {
       console.warn('API deleteUser failed:', err);
-      setUsers(prev => prev.filter(u => u.id !== id));
-      return { success: true, message: 'Pengguna dihapus.' };
+      return { success: false, message: err.message || 'Tidak dapat menghapus pengguna dari TiDB.' };
     }
   };
 
@@ -763,22 +666,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return res;
     } catch (err: any) {
       console.warn('API clearUsersByRole failed:', err);
-      let count = 0;
-      setUsers(prev =>
-        prev.filter(u => {
-          if (u.role === 'admin') return true;
-          if (role === 'all' || u.role === role) {
-            count++;
-            return false;
-          }
-          return true;
-        })
-      );
-      return {
-        success: true,
-        count,
-        message: `Berhasil menghapus ${count} akun ${role === 'all' ? 'peserta & mentor' : role} (lokal).`,
-      };
+      return { success: false, count: 0, message: err.message || 'Tidak dapat menghapus pengguna dari TiDB.' };
     }
   };
 
@@ -816,73 +704,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Trainee & Mentor creation via Excel Import
   const importUsers = async (
     importedUsers: Partial<User>[]
-  ): Promise<{ count: number; message: string }> => {
+  ): Promise<{ success: boolean; count: number; message: string }> => {
     try {
       const res = await api.batchImportUsers(importedUsers);
-      if (res.success) {
-        // Refresh full user list from TiDB
-        const fresh = await api.getUsers();
-        if (fresh.success && fresh.users && fresh.users.length > 0) {
-          setUsers(fresh.users);
-        }
-        return { count: res.count, message: res.message };
+      if (!res.success) {
+        return { success: false, count: 0, message: res.message || 'Impor gagal disimpan ke TiDB.' };
       }
+      const fresh = await api.getUsers();
+      if (fresh.success) setUsers(fresh.users);
+      const appData = await api.getAppData();
+      if (appData.success) setKejuruanList(appData.kejuruanList);
+      return { success: true, count: res.count, message: res.message };
     } catch (err: any) {
-      console.warn('API batchImportUsers failed, using local import:', err);
+      console.warn('API batchImportUsers failed:', err);
+      return { success: false, count: 0, message: err.message || 'Impor gagal disimpan ke TiDB.' };
     }
-
-    // Local fallback if offline
-    let newCount = 0;
-    setUsers(prev => {
-      const updated = [...prev];
-      importedUsers.forEach(item => {
-        if (!item.name) return;
-        const existingIdx = updated.findIndex(
-          u =>
-            (item.nim && u.nim.toLowerCase() === item.nim.toLowerCase()) ||
-            (item.email && u.email.toLowerCase() === item.email.toLowerCase())
-        );
-
-        const loginCode = item.loginCode || generate8DigitLoginCode();
-        const password = item.password || generateDefaultPassword();
-
-        if (existingIdx >= 0) {
-          updated[existingIdx] = {
-            ...updated[existingIdx],
-            ...item,
-            loginCode: item.loginCode || updated[existingIdx].loginCode || loginCode,
-            password: item.password || updated[existingIdx].password || password,
-          } as User;
-        } else {
-          const role = item.role === 'mentor' ? 'mentor' : 'trainee';
-          const newUser: User = {
-            id: `user-${role}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            name: item.name,
-            nim: item.nim || `${role === 'mentor' ? 'MNT' : 'TRN'}-2026-${Math.floor(100 + Math.random() * 900)}`,
-            email: item.email || `${item.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@${role === 'mentor' ? 'hadirku.id' : 'student.id'}`,
-            role,
-            avatar:
-              item.avatar ||
-              `https://images.unsplash.com/photo-${role === 'mentor' ? '1534528741775-53994a69daeb' : '1535713875002-d1d0cf377fde'}?w=150&auto=format&fit=crop&q=80`,
-            phone: item.phone || '0812-3456-7890',
-            kejuruanId: item.kejuruanId || 'kj-1',
-            kejuruanName: item.kejuruanName || 'Umum',
-            status: item.status || 'active',
-            joinedDate: item.joinedDate || new Date().toISOString().split('T')[0],
-            loginCode,
-            password: password || (role === 'mentor' ? 'mentor123' : '123456'),
-          };
-          updated.unshift(newUser);
-          newCount++;
-        }
-      });
-      return updated;
-    });
-
-    return {
-      count: newCount,
-      message: `Berhasil memproses ${importedUsers.length} data (${newCount} akun tersimpan hanya di perangkat ini, belum masuk ke database TiDB).`,
-    };
   };
 
   // Kejuruan CRUD
@@ -916,7 +752,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteMission = (id: string) => {
-    setMissions(prev => prev.filter(m => m.id !== id));
+    api.deleteAppData('missions', id).then(() => {
+      setMissions(prev => prev.filter(m => m.id !== id));
+    }).catch(error => {
+      console.error('[TiDB] Gagal menghapus misi:', error);
+    });
   };
 
   const submitMissionWork = (data: {
@@ -1094,27 +934,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetToDefaultData = () => {
-    localStorage.removeItem('hadirku_users_v2');
-    localStorage.removeItem('hadirku_current_user_id_v2');
-    localStorage.removeItem('hadirku_auth_v2');
-    localStorage.removeItem('hadirku_kejuruan_v2');
-    localStorage.removeItem('hadirku_attendance_v2');
-    localStorage.removeItem('hadirku_leave_requests_v2');
-    localStorage.removeItem('hadirku_settings_v2');
-    localStorage.removeItem('hadirku_missions_v1');
-    localStorage.removeItem('hadirku_submissions_v1');
-    localStorage.removeItem('hadirku_daily_reports_v1');
-    setUsers(INITIAL_USERS);
-    setCurrentUserId(INITIAL_USERS[0].id);
-    setIsAuthenticated(true);
-    setKejuruanList(INITIAL_KEJURUAN);
-    setAttendanceRecords(generateInitialAttendance());
-    setLeaveRequests(INITIAL_LEAVE_REQUESTS);
-    setSettings(INITIAL_SETTINGS);
-    setMissions(INITIAL_MISSIONS);
-    setMissionSubmissions(INITIAL_SUBMISSIONS);
-    setDailyReports([]);
-    setActiveTab('dashboard');
+    if (!isAuthenticated || !jwtToken) return;
+    setAppDataReady(false);
+    api.getAppData().then(data => {
+      setKejuruanList(data.kejuruanList);
+      setAttendanceRecords(data.attendanceRecords);
+      setLeaveRequests(data.leaveRequests);
+      setMissions(data.missions);
+      setMissionSubmissions(data.missionSubmissions);
+      setDailyReports(data.dailyReports);
+      if (data.settings) setSettings(data.settings);
+      setAppDataReady(true);
+    }).catch(error => {
+      console.error('[TiDB] Gagal memuat ulang data:', error);
+      setTidbStatus('offline');
+    });
   };
 
   return (

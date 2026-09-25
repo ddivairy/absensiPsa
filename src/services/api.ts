@@ -1,6 +1,9 @@
-import { User } from '../types';
+import {
+  User, Kejuruan, AttendanceRecord, LeaveRequest, AttendanceSettings,
+  Mission, MissionSubmission, DailyReport
+} from '../types';
 
-const TOKEN_KEY = 'hadirku_jwt_token';
+let authToken: string | null = null;
 
 export interface LoginResponse {
   success: boolean;
@@ -23,18 +26,28 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+export interface AppDataSnapshot {
+  kejuruanList: Kejuruan[];
+  attendanceRecords: AttendanceRecord[];
+  leaveRequests: LeaveRequest[];
+  settings: AttendanceSettings | null;
+  missions: Mission[];
+  missionSubmissions: MissionSubmission[];
+  dailyReports: DailyReport[];
+}
+
 export const api = {
   // Token management
   getToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+    return authToken;
   },
 
   setToken(token: string) {
-    localStorage.setItem(TOKEN_KEY, token);
+    authToken = token;
   },
 
   clearToken() {
-    localStorage.removeItem(TOKEN_KEY);
+    authToken = null;
   },
 
   // Helper for authenticated fetch
@@ -90,6 +103,23 @@ export const api = {
   // Get current authenticated user profile via JWT
   async getMe(): Promise<MeResponse> {
     return this.request<MeResponse>('/api/auth/me');
+  },
+
+  async getAppData(): Promise<{ success: boolean } & AppDataSnapshot> {
+    return this.request<{ success: boolean } & AppDataSnapshot>('/api/app-data');
+  },
+
+  async saveAppData(data: AppDataSnapshot): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/api/app-data', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteAppData(collection: string, id: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/api/app-data/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   },
 
   // Get all users from TiDB (Admin / Mentor only)

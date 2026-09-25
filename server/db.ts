@@ -1,6 +1,5 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
@@ -52,84 +51,210 @@ export interface DbUser {
   password_hash: string;
 }
 
-// 1. Akun ADMIN dibuat di MySQL / TiDB langsung
-const DIRECT_MYSQL_ADMIN = {
-  id: 'user-admin-1',
-  nim: 'ADM-2026-001',
-  name: 'Bambang Sudirman, M.Kom',
-  email: 'admin@hadirku.id',
-  role: 'admin' as const,
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-  phone: '0812-3456-7890',
-  kejuruanId: null,
-  kejuruanName: null,
-  status: 'active' as const,
-  joinedDate: '2025-01-10',
-  loginCode: '10000001',
-  rawPassword: 'admin123',
-};
+export async function ensureDatabaseExists() {
+  const dbConfig = getDbConfig();
+  if (!/^[a-zA-Z0-9_]+$/.test(dbConfig.database)) {
+    throw new Error('Nama database hanya boleh berisi huruf, angka, dan garis bawah.');
+  }
+  const { database, ...serverConfig } = dbConfig;
+  const serverConnection = await mysql.createConnection(serverConfig);
+  try {
+    await serverConnection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
+  } finally {
+    await serverConnection.end();
+  }
+}
 
 export async function initDatabase() {
+  const { database } = getDbConfig();
   const p = getPool();
-  console.log('[TiDB] Memeriksa tabel dan akun Administrator...');
+  console.log(`[TiDB] Memeriksa tabel aplikasi pada database ${database}...`);
 
-  // Create users table if not exists
-  await p.query(`
+  const tableMigrations = [
+    `
     CREATE TABLE IF NOT EXISTS users (
       id VARCHAR(64) PRIMARY KEY,
-      nim VARCHAR(64) NOT NULL UNIQUE,
+      nim CHAR(8) NOT NULL UNIQUE,
       name VARCHAR(128) NOT NULL,
       email VARCHAR(128) NOT NULL UNIQUE,
       role ENUM('admin', 'mentor', 'trainee') NOT NULL,
       avatar TEXT,
       phone VARCHAR(32),
       kejuruan_id VARCHAR(64),
-      kejuruan_name VARCHAR(128),
+      kejuruan_name VARCHAR(255),
       status ENUM('active', 'inactive') DEFAULT 'active',
       joined_date VARCHAR(32),
-      login_code VARCHAR(32) NOT NULL UNIQUE,
+      login_code CHAR(8) NOT NULL UNIQUE,
       password_hash VARCHAR(255) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-  `);
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS kejuruan (
+      id VARCHAR(64) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      code VARCHAR(64) NOT NULL,
+      category VARCHAR(128) NOT NULL,
+      color VARCHAR(16) NOT NULL,
+      description TEXT,
+      mentor_id VARCHAR(64),
+      mentor_name VARCHAR(128),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_kejuruan_code (code),
+      INDEX idx_kejuruan_mentor (mentor_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS attendance_records (
+      id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(64) NOT NULL,
+      user_name VARCHAR(128) NOT NULL,
+      user_nim VARCHAR(64) NOT NULL,
+      user_role ENUM('admin','mentor','trainee') NOT NULL DEFAULT 'trainee',
+      kejuruan_id VARCHAR(64),
+      kejuruan_name VARCHAR(255),
+      attendance_date DATE NOT NULL,
+      check_in_time TIME,
+      check_out_time TIME,
+      status ENUM('hadir','terlambat','izin','sakit','alpha') NOT NULL,
+      verification_status ENUM('pending','verified','rejected') NOT NULL DEFAULT 'pending',
+      verified_by VARCHAR(64),
+      verified_at DATETIME,
+      location TEXT,
+      latitude DECIMAL(10,7),
+      longitude DECIMAL(10,7),
+      notes TEXT,
+      photo_url LONGTEXT,
+      rejection_reason TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_attendance_user_date (user_id, attendance_date),
+      INDEX idx_attendance_date_status (attendance_date, verification_status),
+      INDEX idx_attendance_kejuruan_date (kejuruan_id, attendance_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS leave_requests (
+      id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(64) NOT NULL,
+      user_name VARCHAR(128) NOT NULL,
+      user_nim VARCHAR(64) NOT NULL,
+      kejuruan_id VARCHAR(64),
+      kejuruan_name VARCHAR(255),
+      request_type ENUM('izin','sakit') NOT NULL,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      days_count INT NOT NULL DEFAULT 1,
+      reason TEXT NOT NULL,
+      attachment_name VARCHAR(255),
+      attachment_url LONGTEXT,
+      status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+      submitted_at DATETIME NOT NULL,
+      reviewed_by VARCHAR(64),
+      reviewed_at DATETIME,
+      review_notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_leave_user (user_id),
+      INDEX idx_leave_status_dates (status, start_date, end_date),
+      INDEX idx_leave_kejuruan_status (kejuruan_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS attendance_settings (
+      id VARCHAR(64) PRIMARY KEY,
+      start_time TIME NOT NULL,
+      late_limit_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      allow_checkout_start TIME NOT NULL,
+      work_days JSON NOT NULL,
+      office_location JSON NOT NULL,
+      updated_by VARCHAR(64),
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS missions (
+      id VARCHAR(64) PRIMARY KEY,
+      title VARCHAR(200) NOT NULL,
+      description TEXT NOT NULL,
+      kejuruan_id VARCHAR(64) NOT NULL,
+      kejuruan_name VARCHAR(255) NOT NULL,
+      mentor_id VARCHAR(64) NOT NULL,
+      mentor_name VARCHAR(128) NOT NULL,
+      points INT NOT NULL DEFAULT 0,
+      difficulty ENUM('Mudah','Sedang','Tantangan') NOT NULL,
+      due_date DATE NOT NULL,
+      created_at DATETIME NOT NULL,
+      status ENUM('active','archived') NOT NULL DEFAULT 'active',
+      category VARCHAR(128),
+      submission_guide TEXT,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_missions_kejuruan_status (kejuruan_id, status),
+      INDEX idx_missions_due_date (due_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS mission_submissions (
+      id VARCHAR(64) PRIMARY KEY,
+      mission_id VARCHAR(64) NOT NULL,
+      mission_title VARCHAR(200) NOT NULL,
+      trainee_id VARCHAR(64) NOT NULL,
+      trainee_name VARCHAR(128) NOT NULL,
+      trainee_nim VARCHAR(64) NOT NULL,
+      trainee_avatar LONGTEXT,
+      kejuruan_id VARCHAR(64),
+      kejuruan_name VARCHAR(255),
+      submission_link TEXT,
+      notes TEXT,
+      points INT NOT NULL DEFAULT 0,
+      submitted_at DATETIME NOT NULL,
+      status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+      reviewed_by VARCHAR(64),
+      reviewed_at DATETIME,
+      feedback TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_submissions_mission (mission_id, status),
+      INDEX idx_submissions_trainee (trainee_id, submitted_at),
+      INDEX idx_submissions_kejuruan (kejuruan_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS daily_reports (
+      id VARCHAR(64) PRIMARY KEY,
+      trainee_id VARCHAR(64) NOT NULL,
+      trainee_name VARCHAR(128) NOT NULL,
+      trainee_nim VARCHAR(64) NOT NULL,
+      trainee_avatar LONGTEXT,
+      kejuruan_id VARCHAR(64),
+      kejuruan_name VARCHAR(255),
+      report_date DATE NOT NULL,
+      description TEXT NOT NULL,
+      photo_url LONGTEXT,
+      photo_name VARCHAR(255),
+      submission_link TEXT,
+      status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+      submitted_at DATETIME NOT NULL,
+      reviewed_by VARCHAR(64),
+      reviewed_at DATETIME,
+      review_notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_daily_report_trainee_date (trainee_id, report_date),
+      INDEX idx_daily_reports_status_date (status, report_date),
+      INDEX idx_daily_reports_kejuruan (kejuruan_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `,
+  ];
 
-  console.log('[TiDB] Tabel `users` aktif.');
-
-  // Pastikan akun Administrator langsung terdaftar di MySQL
-  const [existingAdmin] = await p.query<any[]>(
-    "SELECT id FROM users WHERE role = 'admin' LIMIT 1"
-  );
-
-  if (existingAdmin.length === 0) {
-    const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(DIRECT_MYSQL_ADMIN.rawPassword, salt);
-
-    await p.query(
-      `INSERT INTO users (
-        id, nim, name, email, role, avatar, phone, kejuruan_id, kejuruan_name,
-        status, joined_date, login_code, password_hash
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        DIRECT_MYSQL_ADMIN.id,
-        DIRECT_MYSQL_ADMIN.nim,
-        DIRECT_MYSQL_ADMIN.name,
-        DIRECT_MYSQL_ADMIN.email,
-        DIRECT_MYSQL_ADMIN.role,
-        DIRECT_MYSQL_ADMIN.avatar,
-        DIRECT_MYSQL_ADMIN.phone,
-        DIRECT_MYSQL_ADMIN.kejuruanId,
-        DIRECT_MYSQL_ADMIN.kejuruanName,
-        DIRECT_MYSQL_ADMIN.status,
-        DIRECT_MYSQL_ADMIN.joinedDate,
-        DIRECT_MYSQL_ADMIN.loginCode,
-        hash,
-      ]
-    );
-    console.log('[TiDB] Akun Admin berhasil dibuat di MySQL langsung (admin@hadirku.id)');
-  } else {
-    console.log('[TiDB] Akun Admin siap di MySQL.');
+  for (const migration of tableMigrations) {
+    await p.query(migration);
   }
 
-  console.log('[TiDB] Database setup siap. Akun Mentor & Trainee dibuat oleh Admin via aplikasi / Excel.');
+  console.log(`[TiDB] Skema aplikasi siap: ${tableMigrations.length} tabel.`);
 }
