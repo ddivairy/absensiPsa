@@ -245,17 +245,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* Tip Banner from style.html */}
-      <div className="mt-4 rounded-xl border border-white/10 bg-[#0D2F47] p-3.5">
-        <div className="flex gap-2.5">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#A9C7DE]" />
-          <div>
-            <p className="text-xs font-bold text-white">Presensi lebih mudah</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-[#A9C7DE]">
-              Pastikan lokasi aktif sebelum melakukan check-in atau check-out.
-            </p>
+      {currentUser.role !== 'admin' && (
+        <div className="mt-4 rounded-xl border border-white/10 bg-[#0D2F47] p-3.5">
+          <div className="flex gap-2.5">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#A9C7DE]" />
+            <div>
+              <p className="text-xs font-bold text-white">Presensi lebih mudah</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[#A9C7DE]">
+                Pastikan lokasi aktif sebelum melakukan check-in atau check-out.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Logout Footer */}
       <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
