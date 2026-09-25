@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import punyaSkillLogo from '../../assets/Logo PSA.jpeg';
 import {
   KeyRound,
   Eye,
@@ -51,17 +52,19 @@ export const LoginView: React.FC = () => {
       <div className="w-full max-w-md space-y-5">
         {/* App Branding */}
         <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-3">
-            <svg className="w-11 h-13 shrink-0" viewBox="0 0 50 58" aria-label="Logo Punya Skill Akademi" role="img">
-              <path d="M4 3h42v32c0 10-9 16-21 21C13 51 4 45 4 35V3Z" fill="#123B59" />
-              <path d="M6 5h38v29c0 9-8 14-19 19C14 48 6 43 6 34V5Z" fill="#0D2F47" />
-              <path d="M10 29h30v5c-3 7-8 10-15 14-7-4-12-7-15-14v-5Z" fill="#fff" />
-              <path d="M16 15c4-3 7 1 9 3 2-2 5-6 9-3v8c-3-2-6-2-9 0-3-2-6-2-9 0v-8Z" fill="#fff" />
-              <path d="M15 38c3 0 4 4 6 4 2 0 2-7 4-7s2 7 4 7c2 0 3-4 6-4" fill="none" stroke="#0D2F47" strokeWidth="2" />
-            </svg>
+          <div className="flex items-center justify-center gap-3 rounded-2xl bg-[#123B59] px-5 py-4 shadow-lg shadow-[#123B59]/15">
+            <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/35 bg-white shadow-md">
+              <img
+                src={punyaSkillLogo}
+                alt="Logo PSA Punya Skill Academy"
+                className="h-full w-full object-cover object-left"
+              />
+            </span>
             <div className="text-left">
-              <div className="brand-punya text-[#123B59]">PSA</div>
-              <div className="brand-skill">Punya Skill Akademi</div>
+              <div className="text-2xl font-extrabold tracking-[.08em] text-white">PSA &ndash;</div>
+              <div className="text-sm font-semibold tracking-[.04em] text-[#A9C7DE]">
+                Punya Skill Academy
+              </div>
             </div>
           </div>
           <p className="text-[10px] font-bold tracking-[.16em] text-[#4C83B5] uppercase pt-1">
