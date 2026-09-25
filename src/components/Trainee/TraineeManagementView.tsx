@@ -319,6 +319,10 @@ export const TraineeManagementView: React.FC = () => {
     () => parsedImportUsers.filter(u => u.role === 'mentor').length,
     [parsedImportUsers]
   );
+  const previewAdmins = useMemo(
+    () => parsedImportUsers.filter(u => u.role === 'admin').length,
+    [parsedImportUsers]
+  );
 
   const targetCount = useMemo(() => {
     if (clearRoleTarget === 'trainee') return trainees.length;
@@ -947,6 +951,9 @@ export const TraineeManagementView: React.FC = () => {
                       <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                         {previewMentors} Mentor
                       </span>
+                      <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        {previewAdmins} Admin
+                      </span>
                     </div>
 
                     {/* Quick batch toggle buttons */}
@@ -1013,6 +1020,7 @@ export const TraineeManagementView: React.FC = () => {
                               >
                                 <option value="trainee">🎓 Peserta (Trainee)</option>
                                 <option value="mentor">👨‍🏫 Instruktur (Mentor)</option>
+                                <option value="admin">Administrator (Admin)</option>
                               </select>
                             </td>
                             <td className="py-2 px-3 font-mono text-[#6F7F8D]">{u.loginCode || u.nim}</td>
@@ -1050,7 +1058,7 @@ export const TraineeManagementView: React.FC = () => {
                   <>
                     <Check className="w-4 h-4 text-emerald-400" />
                     <span>
-                      Terapkan &amp; Simpan ({previewTrainees} Peserta, {previewMentors} Mentor)
+                      Terapkan &amp; Simpan ({previewTrainees} Peserta, {previewMentors} Mentor, {previewAdmins} Admin)
                     </span>
                   </>
                 )}

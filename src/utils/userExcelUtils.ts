@@ -127,7 +127,9 @@ export async function parseUsersFromExcelFile(
       // Detect sheet-level role from sheet name
       const sheetLower = sheetName.toLowerCase();
       let sheetRole: Role | null = null;
-      if (
+      if (sheetLower.includes('admin') || sheetLower.includes('administrator')) {
+        sheetRole = 'admin';
+      } else if (
         sheetLower.includes('mentor') ||
         sheetLower.includes('instruktur') ||
         sheetLower.includes('guru') ||
@@ -216,10 +218,13 @@ export async function parseUsersFromExcelFile(
           // Auto detection mode
           if (roleIdx !== -1 && row[roleIdx]) {
             const rVal = String(row[roleIdx]).trim().toLowerCase();
+            const adminKeywords = ['admin', 'administrator'];
             const mentorKeywords = ['mentor', 'instruktur', 'guru', 'pengajar', 'pembimbing', 'dosen', 'trainer', 'fasilitator', 'pendamping', 'mnt'];
             const traineeKeywords = ['trainee', 'peserta', 'siswa', 'murid', 'mahasiswa', 'magang', 'pelajar', 'trn'];
 
-            if (mentorKeywords.some(k => rVal.includes(k))) {
+            if (adminKeywords.some(k => rVal.includes(k))) {
+              finalRole = 'admin';
+            } else if (mentorKeywords.some(k => rVal.includes(k))) {
               finalRole = 'mentor';
             } else if (traineeKeywords.some(k => rVal.includes(k))) {
               finalRole = 'trainee';
@@ -266,7 +271,7 @@ export async function parseUsersFromExcelFile(
               programValue.toLowerCase().startsWith(`${k.code.toLowerCase()} :`)
             )
           : undefined;
-        if (!programValue) {
+        if (!programValue && finalRole !== 'admin') {
           return {
             success: false,
             error: `Program Kejuruan pada baris ${r + 1} kosong. Isi nama program sesuai data Excel.`,
@@ -288,8 +293,8 @@ export async function parseUsersFromExcelFile(
           name: rawName,
           nim: rawIdentifier,
           role: finalRole,
-          kejuruanId: targetKj?.id || importedKejuruanId(programValue),
-          kejuruanName: targetKj?.name || programValue,
+          kejuruanId: programValue ? (targetKj?.id || importedKejuruanId(programValue)) : undefined,
+          kejuruanName: programValue ? (targetKj?.name || programValue) : undefined,
           loginCode: rawCode,
           password: rawPass,
           email: `${rawIdentifier}@hadirku.id`,

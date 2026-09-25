@@ -24,7 +24,7 @@ import {
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS } from './utils/dateUtils';
 
 const MainLayout: React.FC = () => {
-  const { currentUser, activeTab, setActiveTab, isAuthenticated } = useApp();
+  const { currentUser, activeTab, setActiveTab, isAuthenticated, authReady } = useApp();
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [liveClock, setLiveClock] = useState('00.00.00');
@@ -47,6 +47,17 @@ const MainLayout: React.FC = () => {
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFB] text-[#123B59]">
+        <div className="flex items-center gap-3 rounded-2xl border border-[#E4EAF0] bg-white px-5 py-4 shadow-sm">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#4C83B5] border-t-transparent" />
+          <span className="text-sm font-semibold">Memeriksa sesi login...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginView />;

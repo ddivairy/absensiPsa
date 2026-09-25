@@ -17,6 +17,15 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const AUTH_COOKIE = 'hadirku_auth';
+const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const authCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: AUTH_COOKIE_MAX_AGE,
+};
 
 function importedKejuruanId(programName: string): string {
   let hash = 2166136261;
@@ -26,7 +35,7 @@ function importedKejuruanId(programName: string): string {
   return `kj-import-${(hash >>> 0).toString(36)}`;
 }
 
-app.use(cors());
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use('/api/app-data', appDataRouter);
 
@@ -126,6 +135,7 @@ app.post('/api/auth/login', async (req, res: Response) => {
       kejuruanName: user.kejuruan_name,
       loginCode: user.login_code,
     });
+    res.cookie(AUTH_COOKIE, token, authCookieOptions);
 
     const safeUser = {
       id: user.id,
@@ -156,6 +166,16 @@ app.post('/api/auth/login', async (req, res: Response) => {
       error: error.message,
     });
   }
+});
+
+app.post('/api/auth/logout', (_req, res: Response) => {
+  res.clearCookie(AUTH_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+  });
+  return res.json({ success: true, message: 'Sesi berhasil diakhiri.' });
 });
 
 // 3. Current User Profile (Protected by JWT)
@@ -386,16 +406,16 @@ app.post(
         const nimValue = String(item?.nim || '').trim();
         const passwordValue = String(item?.password || '').trim();
         return !item?.name?.trim() ||
-          !['mentor', 'trainee'].includes(item?.role) ||
+          !['admin', 'mentor', 'trainee'].includes(item?.role) ||
           !/^\d{8}$/.test(identifier) ||
           nimValue !== identifier ||
           !/^\d{8}$/.test(passwordValue) ||
-          !item?.kejuruanName?.trim();
+          (item?.role !== 'admin' && !item?.kejuruanName?.trim());
       });
       if (invalidIndex !== -1) {
         return res.status(400).json({
           success: false,
-          message: `Data pengguna pada baris ${invalidIndex + 1} tidak sesuai. Isi nama, NIM/Kode Login 8 digit, sandi 8 digit, program kejuruan, dan role mentor/trainee.`,
+          message: `Data pengguna pada baris ${invalidIndex + 1} tidak sesuai. Isi nama, NIM/Kode Login 8 digit, sandi 8 digit, role admin/mentor/trainee, dan program kejuruan untuk mentor/peserta.`,
         });
       }
 
@@ -420,6 +440,9 @@ app.post(
       const connection = await pool.getConnection();
       let insertedCount = 0;
       let processedCount = 0;
+      let adminCount = 0;
+      let mentorCount = 0;
+      let traineeCount = 0;
       const createdUsers: any[] = [];
 
       try {
@@ -429,14 +452,14 @@ app.post(
           if (!item.name || !item.name.trim()) continue;
           processedCount++;
 
-          const role = item.role as 'mentor' | 'trainee';
+          const role = item.role as Role;
           const code = String(item.loginCode || item.nim).trim();
           const nim = code;
           const email = item.email?.trim() || `${code}@hadirku.id`;
           const rawPassword = String(item.password).trim();
-          const kejuruanName = String(item.kejuruanName).trim();
+          const kejuruanName = String(item.kejuruanName || '').trim();
           let kejuruanId = String(item.kejuruanId || '').trim();
-          if (kejuruanId.startsWith('kj-import-') || kejuruanId.length > 64) {
+          if (kejuruanName && (kejuruanId.startsWith('kj-import-') || kejuruanId.length > 64)) {
             kejuruanId = importedKejuruanId(kejuruanName);
             const programHash = kejuruanId.slice('kj-import-'.length);
             await connection.query(
@@ -446,6 +469,9 @@ app.post(
               [kejuruanId, kejuruanName, `IMP-${programHash}`]
             );
           }
+          if (role === 'admin') adminCount++;
+          else if (role === 'mentor') mentorCount++;
+          else traineeCount++;
 
           const [existing] = await connection.query<any[]>(
             'SELECT id, role FROM users WHERE email = ? OR nim = ? OR login_code = ? LIMIT 2',
@@ -541,15 +567,13 @@ app.post(
         connection.release();
       }
 
-      const traineeCount = users.filter((u: any) => u.role === 'trainee').length;
-      const mentorCount = users.filter((u: any) => u.role === 'mentor').length;
-
       return res.json({
         success: true,
         count: processedCount,
         traineeCount,
         mentorCount,
-        message: `Berhasil memproses ${processedCount} akun (${traineeCount} Peserta Magang, ${mentorCount} Instruktur Mentor) di database TiDB. ${insertedCount} akun baru ditambahkan.`,
+        adminCount,
+        message: `Berhasil memproses ${processedCount} akun (${adminCount} Admin, ${mentorCount} Mentor, ${traineeCount} Peserta) di database TiDB. ${insertedCount} akun baru ditambahkan.`,
         createdUsers,
       });
     } catch (error: any) {

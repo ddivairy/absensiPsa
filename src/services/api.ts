@@ -3,8 +3,6 @@ import {
   Mission, MissionSubmission, DailyReport
 } from '../types';
 
-let authToken: string | null = null;
-
 export interface LoginResponse {
   success: boolean;
   message: string;
@@ -37,17 +35,21 @@ export interface AppDataSnapshot {
 }
 
 export const api = {
-  // Token management
   getToken(): string | null {
-    return authToken;
+    try {
+      return window.sessionStorage.getItem('hadirku_session_token');
+    } catch {
+      return null;
+    }
   },
 
-  setToken(token: string) {
-    authToken = token;
-  },
-
-  clearToken() {
-    authToken = null;
+  setToken(token: string | null): void {
+    try {
+      if (token) window.sessionStorage.setItem('hadirku_session_token', token);
+      else window.sessionStorage.removeItem('hadirku_session_token');
+    } catch {
+      // The HttpOnly cookie remains the primary session mechanism.
+    }
   },
 
   // Helper for authenticated fetch
@@ -55,16 +57,14 @@ export const api = {
     const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...((options.headers as Record<string, string>) || {}),
     };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
 
     const response = await fetch(endpoint, {
       ...options,
       headers,
+      credentials: 'include',
     });
 
     const data = await response.json().catch(() => ({}));
@@ -92,12 +92,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-
-    if (res.token) {
-      this.setToken(res.token);
-    }
-
+    if (res.token) this.setToken(res.token);
     return res;
+  },
+
+  async logoutSession(): Promise<void> {
+    try {
+      await this.request('/api/auth/logout', { method: 'POST' });
+    } finally {
+      this.setToken(null);
+    }
   },
 
   // Get current authenticated user profile via JWT

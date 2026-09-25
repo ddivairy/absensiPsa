@@ -32,6 +32,7 @@ interface AppContextType {
   missionSubmissions: MissionSubmission[];
   activeTab: string;
   isAuthenticated: boolean;
+  authReady: boolean;
   jwtToken: string | null;
   tidbStatus: 'connected' | 'connecting' | 'error' | 'offline';
   setActiveTab: (tab: string) => void;
@@ -119,12 +120,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [users, setUsers] = useState<User[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
-  const [jwtToken, setJwtToken] = useState<string | null>(() => api.getToken());
+  // Marker for a session restored from the server cookie or the tab-scoped bearer fallback.
+  const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [tidbStatus, setTidbStatus] = useState<'connected' | 'connecting' | 'error' | 'offline'>('connecting');
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return Boolean(api.getToken());
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [appDataReady, setAppDataReady] = useState(false);
 
   // Verify JWT session and check TiDB health on startup
@@ -144,11 +145,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (isMounted) setTidbStatus('offline');
       }
 
-      const token = api.getToken();
-      if (token) {
-        try {
+      try {
           const res = await api.getMe();
           if (isMounted && res.success && res.user) {
+            setJwtToken('cookie-session');
             setUsers([res.user]);
             setCurrentUserId(res.user.id);
             setIsAuthenticated(true);
@@ -173,19 +173,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               });
             }
           } else if (isMounted) {
-            api.clearToken();
             setJwtToken(null);
             setIsAuthenticated(false);
           }
-        } catch (err) {
-          console.warn('[JWT] Session expired or invalid, logging out', err);
+        } catch {
           if (isMounted) {
-            api.clearToken();
             setJwtToken(null);
             setIsAuthenticated(false);
           }
+        } finally {
+          if (isMounted) setAuthReady(true);
         }
-      }
     };
 
     initAuthSession();
@@ -274,8 +272,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanedCode = code.replace(/\s+/g, '').trim();
     try {
       const res = await api.login({ code: cleanedCode, password: pass });
-      if (res.success && res.user && res.token) {
-        setJwtToken(res.token);
+      if (res.success && res.user) {
+        setJwtToken('cookie-session');
         setTidbStatus('connected');
         setUsers(prev => {
           const idx = prev.findIndex(u => u.id === res.user!.id);
@@ -309,7 +307,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = () => {
-    api.clearToken();
+    void api.logoutSession().catch(err => console.warn('Gagal mengakhiri sesi server:', err));
     setJwtToken(null);
     setIsAuthenticated(false);
     setCurrentUserId('');
@@ -965,6 +963,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dailyReports,
         activeTab,
         isAuthenticated,
+        authReady,
         jwtToken,
         tidbStatus,
         setActiveTab,

@@ -53,7 +53,13 @@ export async function comparePassword(plain: string, hash: string): Promise<bool
 // Middleware: Authenticate JWT from Authorization header
 export function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // "Bearer <TOKEN>"
+  const bearerToken = authHeader && authHeader.split(' ')[1];
+  const cookieToken = req.headers.cookie
+    ?.split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith('hadirku_auth='))
+    ?.slice('hadirku_auth='.length);
+  const token = bearerToken || (cookieToken ? decodeURIComponent(cookieToken) : undefined);
 
   if (!token) {
     return res.status(401).json({
