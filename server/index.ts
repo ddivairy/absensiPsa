@@ -636,6 +636,118 @@ app.delete(
   }
 );
 
+// Leave requests: the attachment is a share URL stored as text in TiDB.
+const mapLeaveRequest = (row: any) => ({
+  id: row.id,
+  userId: row.user_id,
+  userName: row.user_name,
+  userNim: row.user_nim,
+  kejuruanId: row.kejuruan_id,
+  kejuruanName: row.kejuruan_name,
+  type: row.request_type,
+  startDate: row.start_date,
+  endDate: row.end_date,
+  daysCount: Number(row.days_count),
+  reason: row.reason,
+  attachmentUrl: row.attachment_url,
+  status: row.status,
+  submittedAt: row.submitted_at,
+  reviewedBy: row.reviewed_by || undefined,
+  reviewedAt: row.reviewed_at || undefined,
+  reviewNotes: row.review_notes || undefined,
+});
+
+app.get('/api/leaves', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    const pool = getPool();
+    let query = 'SELECT * FROM leave_requests ORDER BY created_at DESC';
+    let params: string[] = [];
+    if (req.user?.role === 'trainee') {
+      query = 'SELECT * FROM leave_requests WHERE user_id = ? ORDER BY created_at DESC';
+      params = [req.user.id];
+    } else if (req.user?.role === 'mentor') {
+      query = 'SELECT * FROM leave_requests WHERE kejuruan_id = ? ORDER BY created_at DESC';
+      params = [req.user.kejuruanId || ''];
+    }
+    const [rows] = await pool.query<any[]>(query, params);
+    return res.json({ success: true, requests: rows.map(mapLeaveRequest) });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Gagal memuat pengajuan izin dari TiDB.', error: error.message });
+  }
+});
+
+app.post('/api/leaves', authenticateToken, authorizeRoles('trainee'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { type, startDate, endDate, reason, attachmentUrl } = req.body || {};
+    if (!['izin', 'sakit'].includes(type) || !/^\d{4}-\d{2}-\d{2}$/.test(startDate || '') || !/^\d{4}-\d{2}-\d{2}$/.test(endDate || '') || !String(reason || '').trim()) {
+      return res.status(400).json({ success: false, message: 'Kategori, rentang tanggal, dan alasan wajib diisi.' });
+    }
+    let attachment: URL;
+    try {
+      attachment = new URL(String(attachmentUrl || ''));
+      if (!['http:', 'https:'].includes(attachment.protocol) || attachment.href.length > 2048) throw new Error('Invalid URL');
+    } catch {
+      return res.status(400).json({ success: false, message: 'Tautan lampiran wajib berupa URL HTTP/HTTPS yang valid (maksimal 2048 karakter).' });
+    }
+    const start = new Date(`${startDate}T00:00:00Z`);
+    const end = new Date(`${endDate}T00:00:00Z`);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end < start) {
+      return res.status(400).json({ success: false, message: 'Rentang tanggal pengajuan tidak valid.' });
+    }
+    const user = req.user!;
+    const id = `leave-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const daysCount = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+    const submittedAt = new Date().toISOString();
+    const pool = getPool();
+    await pool.query(
+      `INSERT INTO leave_requests (
+        id, user_id, user_name, user_nim, kejuruan_id, kejuruan_name,
+        request_type, start_date, end_date, days_count, reason, attachment_url,
+        status, submitted_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+      [id, user.id, user.name, user.nim, user.kejuruanId || '', user.kejuruanName || 'Umum', type, startDate, endDate, daysCount, String(reason).trim(), attachment.href, submittedAt]
+    );
+    const request = mapLeaveRequest({
+      id, user_id: user.id, user_name: user.name, user_nim: user.nim,
+      kejuruan_id: user.kejuruanId || '', kejuruan_name: user.kejuruanName || 'Umum',
+      request_type: type, start_date: startDate, end_date: endDate, days_count: daysCount,
+      reason: String(reason).trim(), attachment_url: attachment.href, status: 'pending', submitted_at: submittedAt
+    });
+    return res.status(201).json({ success: true, message: 'Pengajuan izin tersimpan di TiDB.', request });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Gagal menyimpan pengajuan izin ke TiDB.', error: error.message });
+  }
+});
+
+app.patch('/api/leaves/:id/review', authenticateToken, authorizeRoles('mentor'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { status, reviewNotes } = req.body || {};
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Status verifikasi tidak valid.' });
+    }
+    const pool = getPool();
+    const [rows] = await pool.query<any[]>(
+      'SELECT * FROM leave_requests WHERE id = ? AND kejuruan_id = ? LIMIT 1',
+      [req.params.id, req.user?.kejuruanId || '']
+    );
+    if (!rows.length) return res.status(404).json({ success: false, message: 'Pengajuan izin tidak ditemukan untuk kejuruan Anda.' });
+    if (rows[0].status !== 'pending') return res.status(409).json({ success: false, message: 'Pengajuan ini sudah diproses.' });
+    const reviewedAt = new Date().toISOString();
+    const notes = String(reviewNotes || (status === 'approved' ? 'Pengajuan disetujui' : 'Pengajuan ditolak')).slice(0, 2000);
+    await pool.query(
+      'UPDATE leave_requests SET status = ?, reviewed_by = ?, reviewed_at = ?, review_notes = ? WHERE id = ?',
+      [status, req.user?.name || 'Mentor', reviewedAt, notes, req.params.id]
+    );
+    return res.json({
+      success: true,
+      message: status === 'approved' ? 'Permohonan disetujui.' : 'Permohonan ditolak.',
+      request: mapLeaveRequest({ ...rows[0], status, reviewed_by: req.user?.name || 'Mentor', reviewed_at: reviewedAt, review_notes: notes })
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Gagal memproses pengajuan izin di TiDB.', error: error.message });
+  }
+});
+
 // Start server after initializing TiDB
 async function startServer() {
   try {

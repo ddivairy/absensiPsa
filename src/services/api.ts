@@ -1,6 +1,7 @@
-import { User } from '../types';
+import { LeaveRequest, User } from '../types';
 
 const TOKEN_KEY = 'hadirku_jwt_token';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 
 export interface LoginResponse {
   success: boolean;
@@ -49,7 +50,7 @@ export const api = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(endpoint, {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
     });
@@ -134,6 +135,27 @@ export const api = {
   ): Promise<{ success: boolean; count: number; message: string }> {
     return this.request<{ success: boolean; count: number; message: string }>(`/api/users/clear/${role}`, {
       method: 'DELETE',
+    });
+  },
+
+  async getLeaveRequests(): Promise<{ success: boolean; requests: LeaveRequest[] }> {
+    return this.request<{ success: boolean; requests: LeaveRequest[] }>('/api/leaves');
+  },
+
+  async createLeaveRequest(data: {
+    type: 'izin' | 'sakit';
+    startDate: string;
+    endDate: string;
+    reason: string;
+    attachmentUrl: string;
+  }): Promise<{ success: boolean; request: LeaveRequest; message: string }> {
+    return this.request<{ success: boolean; request: LeaveRequest; message: string }>('/api/leaves', { method: 'POST', body: JSON.stringify(data) });
+  },
+
+  async reviewLeaveRequest(id: string, status: 'approved' | 'rejected', reviewNotes?: string): Promise<{ success: boolean; request: LeaveRequest; message: string }> {
+    return this.request<{ success: boolean; request: LeaveRequest; message: string }>(`/api/leaves/${encodeURIComponent(id)}/review`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, reviewNotes })
     });
   },
 };

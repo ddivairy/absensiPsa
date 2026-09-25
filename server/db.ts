@@ -96,6 +96,31 @@ export async function initDatabase() {
 
   console.log('[TiDB] Tabel `users` aktif.');
 
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS leave_requests (
+      id VARCHAR(96) PRIMARY KEY,
+      user_id VARCHAR(64) NOT NULL,
+      user_name VARCHAR(128) NOT NULL,
+      user_nim VARCHAR(64) NOT NULL,
+      kejuruan_id VARCHAR(64) NOT NULL,
+      kejuruan_name VARCHAR(128) NOT NULL,
+      request_type ENUM('izin', 'sakit') NOT NULL,
+      start_date VARCHAR(10) NOT NULL,
+      end_date VARCHAR(10) NOT NULL,
+      days_count INT NOT NULL,
+      reason TEXT NOT NULL,
+      attachment_url VARCHAR(2048) NOT NULL,
+      status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+      submitted_at VARCHAR(32) NOT NULL,
+      reviewed_by VARCHAR(128),
+      reviewed_at VARCHAR(32),
+      review_notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_leave_user (user_id),
+      INDEX idx_leave_kejuruan_status (kejuruan_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
   // Pastikan akun Administrator langsung terdaftar di MySQL
   const [existingAdmin] = await p.query<any[]>(
     "SELECT id FROM users WHERE role = 'admin' LIMIT 1"

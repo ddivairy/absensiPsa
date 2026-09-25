@@ -22,8 +22,9 @@ export const LeaveManagementView: React.FC = () => {
   const [startDate, setStartDate] = useState<string>(today);
   const [endDate, setEndDate] = useState<string>(today);
   const [reason, setReason] = useState<string>('');
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentUrl, setAttachmentUrl] = useState('');
   const [submittedSuccess, setSubmittedSuccess] = useState<boolean>(false);
+  const [submittedMessage, setSubmittedMessage] = useState('');
 
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState<string>('');
@@ -42,38 +43,30 @@ export const LeaveManagementView: React.FC = () => {
       alert('Mohon tuliskan alasan permohonan izin/sakit.');
       return;
     }
-    if (!attachmentFile) {
-      alert('Lampiran wajib diunggah sebelum pengajuan dikirim.');
-      return;
-    }
-    if (attachmentFile.size > 2 * 1024 * 1024) {
-      alert('Ukuran lampiran maksimal 2 MB.');
+    let normalizedAttachmentUrl: URL;
+    try {
+      normalizedAttachmentUrl = new URL(attachmentUrl.trim());
+      if (!['http:', 'https:'].includes(normalizedAttachmentUrl.protocol)) throw new Error('Invalid protocol');
+    } catch {
+      alert('Masukkan tautan lampiran yang valid (https://...).');
       return;
     }
 
-    const attachmentUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Gagal membaca lampiran.'));
-      reader.onerror = () => reject(new Error('Gagal membaca lampiran.'));
-      reader.readAsDataURL(attachmentFile);
-    }).catch(() => {
-      alert('Lampiran gagal dibaca. Silakan pilih file lain.');
-      return null;
-    });
-    if (!attachmentUrl) return;
-
-    submitLeaveRequest({
-      type,
-      startDate,
-      endDate,
-      reason,
-      attachmentName: attachmentFile.name,
-      attachmentUrl
-    });
+    try {
+      const result = await submitLeaveRequest({ type, startDate, endDate, reason, attachmentUrl: normalizedAttachmentUrl.toString() });
+      if (!result.success) {
+        alert(result.message);
+        return;
+      }
+      setSubmittedMessage(result.message);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Pengajuan gagal dikirim. Coba lagi.');
+      return;
+    }
 
     setSubmittedSuccess(true);
     setReason('');
-    setAttachmentFile(null);
+    setAttachmentUrl('');
     setTimeout(() => setSubmittedSuccess(false), 3000);
   };
 
@@ -88,8 +81,17 @@ export const LeaveManagementView: React.FC = () => {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const handleReview = (id: string, status: 'approved' | 'rejected') => {
-    reviewLeaveRequest(id, status, reviewNotes || undefined);
+  const handleReview = async (id: string, status: 'approved' | 'rejected') => {
+    try {
+      const result = await reviewLeaveRequest(id, status, reviewNotes || undefined);
+      if (!result.success) {
+        alert(result.message);
+        return;
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Permohonan gagal diproses. Coba lagi.');
+      return;
+    }
     setSelectedRequest(null);
     setReviewNotes('');
   };
@@ -127,7 +129,7 @@ export const LeaveManagementView: React.FC = () => {
             {submittedSuccess && (
               <div className="rounded-xl border border-[#C8DCEB] bg-[#EEF6FB] px-4 py-3 flex items-center gap-2.5 text-xs text-[#123B59] font-bold">
                 <Check className="w-4 h-4 text-[#4C83B5] shrink-0" />
-                <span>Pengajuan berhasil dikirim untuk diverifikasi mentor.</span>
+                <span>{submittedMessage}</span>
               </div>
             )}
 
@@ -205,22 +207,22 @@ export const LeaveManagementView: React.FC = () => {
 
             <div>
               <label className="text-xs font-bold text-[#123B59]">
-                {type === 'sakit' ? 'Surat Keterangan Sakit (Wajib)' : 'Lampiran Surat Izin (Wajib)'}
+                {type === 'sakit' ? 'Link Surat Keterangan Sakit (Wajib)' : 'Link Lampiran Surat Izin (Wajib)'}
               </label>
               <div className="mt-1.5">
                 <input
-                  key={attachmentFile?.name || 'empty'}
-                  type="file"
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
+                  type="url"
+                  value={attachmentUrl}
+                  onChange={e => setAttachmentUrl(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  maxLength={2048}
                   required
-                  onChange={e => setAttachmentFile(e.target.files?.[0] || null)}
-                  className="block w-full rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] px-3.5 py-2 text-sm text-[#123B59] file:mr-3 file:rounded-lg file:border-0 file:bg-[#EAF2F8] file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-[#28618F]"
+                  className="block w-full rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] px-3.5 py-2.5 text-sm text-[#123B59]"
                 />
               </div>
               <p className="mt-1.5 text-xs text-[#6F7F8D]">
-                Unggah PDF/DOC/DOCX/JPG/PNG, maksimal 2 MB. {type === 'sakit' ? 'Lampirkan surat keterangan dokter.' : 'Isi template surat izin, simpan atau pindai, lalu unggah di sini.'}
+                Tempel tautan berbagi file (Drive/Cloudinary) dan pastikan mentor dapat membukanya. {type === 'sakit' ? 'Lampirkan surat keterangan dokter.' : 'Isi template surat izin, unggah ke penyimpanan pilihan Anda, lalu tempel tautannya di sini.'}
               </p>
-              {attachmentFile && <p className="mt-1 text-xs font-semibold text-[#28618F]">Terpilih: {attachmentFile.name}</p>}
               {type === 'izin' && <button type="button" onClick={downloadLetterTemplate} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#C8DCEB] bg-[#EEF6FB] px-3.5 py-2.5 text-xs font-bold text-[#28618F] hover:bg-[#EAF2F8]">
                 <FileText className="h-4 w-4" /> Unduh Template Surat Izin (.doc)
               </button>}
@@ -318,7 +320,7 @@ export const LeaveManagementView: React.FC = () => {
                           <p className="mt-2 text-xs text-[#4C83B5] flex items-center gap-1">
                             <Paperclip className="w-3 h-3" />
                             <span>Lampiran: </span>
-                            {leave.attachmentUrl ? <a href={leave.attachmentUrl} download={leave.attachmentName} target="_blank" rel="noreferrer" className="font-semibold hover:underline">{leave.attachmentName}</a> : <span>{leave.attachmentName}</span>}
+                            {leave.attachmentUrl ? <a href={leave.attachmentUrl} target="_blank" rel="noreferrer" className="font-semibold hover:underline">Buka tautan lampiran</a> : <span>{leave.attachmentName}</span>}
                           </p>
                         )}
                         {leave.reviewedBy && (
