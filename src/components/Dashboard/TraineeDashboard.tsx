@@ -216,23 +216,6 @@ export const TraineeDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Action Navigation Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#E4EAF0]">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-[#123B59] uppercase tracking-wider">
-            Kejuruan:
-          </span>
-          <span className="rounded-full bg-[#EAF2F8] text-[#28618F] px-3 py-1 text-xs font-bold">
-            {currentUser.kejuruanName || 'Kejuruan Vokasi'}
-          </span>
-          <span className="text-xs text-[#6F7F8D]">
-            &middot; Mentor: <strong className="text-[#123B59]">{mentorName}</strong>
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2" />
-      </div>
-
       {/* 1. Summary Cards (Matching style.html) */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* Hadir */}

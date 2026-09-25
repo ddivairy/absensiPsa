@@ -207,27 +207,6 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Header with Hierarchy Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E4EAF0]">
-        <div>
-          <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase">
-            PUSAT OTORITAS & VERIFIKASI
-          </p>
-          <div className="flex items-center gap-2 mt-1">
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#123B59]">
-              Verifikasi & Monitoring Admin
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#123B59] text-white">
-              Administrator
-            </span>
-          </div>
-          <p className="text-xs text-[#6F7F8D] mt-1">
-            {formatIndonesianDate(today)} &middot; Admin memverifikasi kehadiran Instruktur Mentor & memantau rekap seluruh kelas
-          </p>
-        </div>
-
-      </div>
-
       {/* Segmented View Switcher: Verifikasi Mentor vs Rekap Peserta */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E4EAF0] pb-3">
         <div className="flex items-center gap-1 bg-[#F4F6F8] p-1 rounded-xl border border-[#E4EAF0]">

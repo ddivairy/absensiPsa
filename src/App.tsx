@@ -26,7 +26,7 @@ import {
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS } from './utils/dateUtils';
 
 const MainLayout: React.FC = () => {
-  const { currentUser, activeTab, setActiveTab, isAuthenticated } = useApp();
+  const { currentUser, kejuruanList, activeTab, setActiveTab, isAuthenticated } = useApp();
 
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -108,6 +108,12 @@ const MainLayout: React.FC = () => {
       ? 'Mentor'
       : 'Peserta';
 
+  const activeKejuruan = currentUser.kejuruanId
+    ? kejuruanList.find(k => k.id === currentUser.kejuruanId)
+    : undefined;
+  const headerClassName = activeKejuruan?.name || currentUser.kejuruanName || 'Pusat Pelatihan';
+  const headerMentorName = activeKejuruan?.mentorName || 'Tim Punya Skill';
+
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-[#123B59] flex flex-col font-sans">
       {/* Sidebar Navigation (Fixed on desktop, drawer on mobile) */}
@@ -119,9 +125,9 @@ const MainLayout: React.FC = () => {
 
       {/* Main Workspace Area (padded on left for fixed sidebar) */}
       <div className="flex-1 w-full lg:pl-[280px] p-4 sm:p-5 lg:p-6 pb-24 lg:pb-8 flex flex-col">
-        {/* Top Header matching style.html */}
-        <header className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div className="flex items-center justify-between lg:block">
+        {/* Top Header */}
+        <header className="mb-6 flex flex-col gap-4 border-b border-[#E4EAF0] pb-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex items-start justify-between gap-4">
             {/* Mobile Brand with Hamburger */}
             <div className="lg:hidden flex items-center gap-2.5">
               <button
@@ -142,15 +148,27 @@ const MainLayout: React.FC = () => {
               </div>
             </div>
 
-            {/* Desktop / Global Title */}
-            <div>
-              <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5]">
-                PRESENSI MAGANG HARIAN
+            {/* Global Title and Context */}
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#4C83B5]">
+                Presensi Magang Harian
               </p>
-              <h1 className="mt-1 font-bold text-2xl lg:text-3xl text-[#123B59] tracking-tight">
-                Selamat datang kembali
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#123B59] lg:text-3xl">
+                Selamat datang, {currentUser.name}
               </h1>
-              <p className="mt-0.5 text-sm text-[#6F7F8D]">{headerDate}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#6F7F8D]">
+                <span>{headerDate}</span>
+                <span className="hidden text-[#C8D6E2] sm:inline">&middot;</span>
+                <span>Kelas: <strong className="text-[#123B59]">{headerClassName}</strong></span>
+                <span className="hidden text-[#C8D6E2] sm:inline">&middot;</span>
+                <span>Mentor: <strong className="text-[#123B59]">{headerMentorName}</strong></span>
+                {activeKejuruan?.code && (
+                  <>
+                    <span className="hidden text-[#C8D6E2] sm:inline">&middot;</span>
+                    <span>Kode: <strong className="text-[#123B59]">{activeKejuruan.code}</strong></span>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Mobile Quick Role Button */}
@@ -163,7 +181,7 @@ const MainLayout: React.FC = () => {
           </div>
 
           {/* Right Clock & Role Switcher Widget */}
-          <div className="surface flex items-center gap-3 rounded-2xl px-3.5 py-2.5">
+          <div className="surface flex shrink-0 items-center gap-3 rounded-2xl px-3.5 py-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF2F8] text-[#4C83B5]">
               <Clock className="h-4 w-4" />
             </span>

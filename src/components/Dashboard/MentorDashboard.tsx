@@ -170,27 +170,6 @@ export const MentorDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E4EAF0]">
-        <div>
-          <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase">
-            INSTRUKTUR & MENTOR KEJURUAN
-          </p>
-          <div className="flex items-center gap-2 mt-1">
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#123B59]">
-              Kelas {mentorKejuruan.name}
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF2F8] text-[#28618F]">
-              Instruktur Mentor
-            </span>
-          </div>
-          <p className="text-xs text-[#6F7F8D] mt-1">
-            {formatIndonesianDate(today)} &middot; Kode: <strong className="text-[#123B59]">{mentorKejuruan.code}</strong> &middot; Instruktur: {currentUser.name}
-          </p>
-        </div>
-
-      </div>
-
       {/* SECTION 1: PRESENSI MANDIRI MENTOR (Diverifikasi oleh Admin) */}
       <section className="surface soft-hover rounded-2xl p-5 border border-[#E4EAF0] space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E4EAF0] pb-3">
