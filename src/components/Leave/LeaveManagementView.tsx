@@ -102,12 +102,12 @@ export const LeaveManagementView: React.FC = () => {
           PENGAJUAN
         </p>
         <h1 className="mt-1 font-bold text-2xl lg:text-3xl text-[#123B59]">
-          {isTrainee ? 'Ajukan Izin & Sakit' : 'Verifikasi Permohonan Izin'}
+          {isTrainee ? 'Ajukan Izin & Sakit' : currentUser.role === 'admin' ? 'Daftar Permohonan Izin' : 'Verifikasi Permohonan Izin'}
         </h1>
         <p className="mt-1 text-sm text-[#6F7F8D]">
           {isTrainee
             ? 'Formulir resmi ketidakhadiran peserta pelatihan & magang kejuruan.'
-            : 'Tinjau dan setujui surat permohonan izin atau surat keterangan sakit peserta.'}
+            : currentUser.role === 'admin' ? 'Lihat permohonan izin dan lampiran peserta.' : 'Tinjau dan setujui surat permohonan izin atau surat keterangan sakit peserta.'}
         </p>
       </div>
 
@@ -334,7 +334,7 @@ export const LeaveManagementView: React.FC = () => {
                     </div>
 
                     {/* Mentor/Admin action controls */}
-                    {!isTrainee && isPending && (
+                    {currentUser.role === 'mentor' && isPending && (
                       <div className="mt-3 pt-3 border-t border-[#E4EAF0] flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
                         <input
                           type="text"

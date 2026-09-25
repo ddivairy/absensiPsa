@@ -596,7 +596,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     reviewNotes?: string
   ) => {
     const targetLeave = leaveRequests.find(l => l.id === id);
-    if (!targetLeave) return;
+    if (currentUser.role !== 'mentor' || !targetLeave || targetLeave.kejuruanId !== currentUser.kejuruanId) return;
 
     setLeaveRequests(prev =>
       prev.map(l => {

@@ -11,6 +11,7 @@ import { SettingsView } from './components/Settings/SettingsView';
 import { LoginView } from './components/Auth/LoginView';
 import { MissionManagementView } from './components/Missions/MissionManagementView';
 import { HallOfFameView } from './components/HallOfFame/HallOfFameView';
+import { MentorHallOfFameView } from './components/HallOfFame/MentorHallOfFameView';
 import { DailyReportView } from './components/DailyReport/DailyReportView';
 import {
   Menu,
@@ -73,13 +74,13 @@ const MainLayout: React.FC = () => {
         return <TraineeDashboard />;
 
       case 'misi':
-        return <MissionManagementView />;
+        return currentUser.role === 'admin' ? <AdminDashboard /> : <MissionManagementView />;
 
       case 'laporan-harian':
         return <DailyReportView />;
 
       case 'hall-of-fame':
-        return <HallOfFameView />;
+        return currentUser.role === 'admin' ? <MentorHallOfFameView /> : <HallOfFameView />;
 
       case 'rekap':
         return <MonthlyRecapView />;
