@@ -230,40 +230,7 @@ export const TraineeDashboard: React.FC = () => {
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('misi')}
-            className="px-3 py-2 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <Target className="w-3.5 h-3.5 text-[#A9C7DE]" />
-            <span>Misi Kejuruan</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('hall-of-fame')}
-            className="px-3 py-2 rounded-xl border border-[#E4EAF0] bg-white hover:bg-[#F8FAFB] text-[#123B59] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            <span>Hall of Fame</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('izin')}
-            className="px-3 py-2 rounded-xl border border-[#E4EAF0] bg-white hover:bg-[#F8FAFB] text-[#123B59] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <CalendarClock className="w-3.5 h-3.5 text-[#4C83B5]" />
-            <span>Ajukan Izin</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadMyReport}
-            className="px-3 py-2 rounded-xl border border-[#E4EAF0] bg-white hover:bg-[#F8FAFB] text-[#123B59] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <FileText className="w-3.5 h-3.5 text-[#6F7F8D]" />
-            <span>Slip PDF</span>
-          </button>
-        </div>
+        <div className="flex flex-wrap items-center gap-2" />
       </div>
 
       {/* 1. Summary Cards (Matching style.html) */}

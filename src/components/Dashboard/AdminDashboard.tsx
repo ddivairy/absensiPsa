@@ -226,25 +226,6 @@ export const AdminDashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* Global Export Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Rekap Excel</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleExportPDF}
-            className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <FileText className="w-4 h-4 text-[#D95B83]" />
-            <span>Rekap PDF</span>
-          </button>
-        </div>
       </div>
 
       {/* Segmented View Switcher: Verifikasi Mentor vs Rekap Peserta */}
