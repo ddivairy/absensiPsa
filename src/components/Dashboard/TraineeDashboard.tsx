@@ -41,14 +41,17 @@ export const TraineeDashboard: React.FC = () => {
   } = useApp();
 
   const today = getTodayDateString();
+  const todayRecord = getTodayRecordForUser(currentUser.id);
   const [currentYear, currentMonth] = today.split('-').map(Number);
   const monthName = INDONESIAN_MONTHS[currentMonth - 1];
 
   const [liveTime, setLiveTime] = useState<string>('');
   const [dailyNote, setDailyNote] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [workMode, setWorkMode] = useState<'WFO' | 'WFH'>(todayRecord?.workMode || 'WFO');
 
-  const todayRecord = getTodayRecordForUser(currentUser.id);
   const isCheckedIn = !!todayRecord?.checkInTime;
   const isCheckedOut = !!todayRecord?.checkOutTime;
 
@@ -117,14 +120,32 @@ export const TraineeDashboard: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleClockIn = () => {
-    const res = clockIn(dailyNote);
-    showToast(res.message);
-  };
-
-  const handleClockOut = () => {
-    const res = clockOut();
-    showToast(res.message);
+  const handleAttendance = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Browser atau perangkat ini tidak mendukung GPS.');
+      return;
+    }
+    setIsLocating(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const coordinates = { lat: position.coords.latitude, lng: position.coords.longitude };
+        const result = isCheckedIn
+          ? clockOut(undefined, coordinates)
+          : clockIn(dailyNote, undefined, coordinates, workMode);
+        setIsLocating(false);
+        showToast(result.message);
+      },
+      error => {
+        setIsLocating(false);
+        setLocationError(error.code === error.PERMISSION_DENIED
+          ? 'Izin lokasi ditolak. Aktifkan izin lokasi untuk situs ini, lalu coba lagi.'
+          : error.code === error.TIMEOUT
+            ? 'Deteksi lokasi terlalu lama. Pastikan GPS aktif, lalu coba lagi.'
+            : 'Lokasi belum dapat dideteksi. Pastikan GPS aktif dan coba lagi.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
   };
 
   const handleDownloadMyReport = () => {
@@ -397,26 +418,45 @@ export const TraineeDashboard: React.FC = () => {
 
           {/* Big Action Button (Matching style.html) */}
           <div className="mt-5">
+            {!isCheckedIn && !todayLeave && (
+              <fieldset className="mb-3">
+                <legend className="mb-2 text-xs font-bold text-[#123B59]">Mode kerja hari ini</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['WFO', 'WFH'] as const).map(mode => (
+                    <button key={mode} type="button" aria-pressed={workMode === mode} onClick={() => setWorkMode(mode)} className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${workMode === mode ? 'border-[#28618F] bg-[#EAF2F8] text-[#28618F]' : 'border-[#E4EAF0] bg-white text-[#6F7F8D]'}`}>
+                      {mode === 'WFO' ? 'WFO · Kantor Bandung' : 'WFH · Kerja dari rumah'}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            <div className="mb-3 flex items-start gap-2 rounded-xl border border-[#C8DCEB] bg-[#EEF6FB] px-3.5 py-3 text-xs text-[#28618F]">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{(todayRecord?.workMode || workMode) === 'WFO' ? `GPS harus berada dalam radius ${settings.officeLocation.radiusMeters} m dari ${settings.officeLocation.name}.` : 'Mode WFH: lokasi GPS tetap direkam, tanpa batas jarak dari kantor.'}</span>
+            </div>
+            {locationError && (
+              <p role="alert" className="mb-3 rounded-xl border border-[#E3C4D0] bg-[#FCF3F6] px-3.5 py-3 text-xs font-semibold text-[#B84469]">{locationError}</p>
+            )}
             {!isCheckedIn ? (
               <button
                 type="button"
-                onClick={handleClockIn}
-                disabled={isButtonDisabled}
+                onClick={handleAttendance}
+                disabled={isButtonDisabled || isLocating}
                 className="w-full flex items-center justify-center gap-3 rounded-xl px-5 py-4 font-bold text-white transition hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed bg-[#123B59] hover:bg-[#0D2F47] cursor-pointer shadow-sm"
               >
                 <LogIn className="h-5 w-5" />
-                <span>Check-in Sekarang</span>
+                <span>{isLocating ? 'Mendeteksi lokasi...' : 'Check-in Sekarang'}</span>
                 <span className="ml-1 h-2 w-2 rounded-full bg-[#D95B83]"></span>
               </button>
             ) : !isCheckedOut ? (
               <button
                 type="button"
-                onClick={handleClockOut}
-                disabled={isButtonDisabled}
+                onClick={handleAttendance}
+                disabled={isButtonDisabled || isLocating}
                 className="w-full flex items-center justify-center gap-3 rounded-xl px-5 py-4 font-bold text-white transition hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed bg-[#123B59] hover:bg-[#0D2F47] cursor-pointer shadow-sm"
               >
                 <LogOut className="h-5 w-5" />
-                <span>Check-out Pulang</span>
+                <span>{isLocating ? 'Mendeteksi lokasi...' : 'Check-out Pulang'}</span>
                 <span className="ml-1 h-2 w-2 rounded-full bg-[#D95B83]"></span>
               </button>
             ) : (
@@ -472,8 +512,13 @@ export const TraineeDashboard: React.FC = () => {
                     {todayRecord?.checkInTime ? `${todayRecord.checkInTime} WIB` : 'Belum tercatat'}
                   </p>
                   <p className="mt-0.5 text-xs text-[#6F7F8D]">
-                    {todayRecord?.notes || settings.officeLocation.name}
+                    {todayRecord?.workMode || workMode} · {todayRecord?.notes || settings.officeLocation.name}
                   </p>
+                  {(todayRecord?.checkInCoordinates || todayRecord?.coordinates) && (
+                    <a className="mt-1 inline-flex text-xs font-semibold text-[#28618F] hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${(todayRecord.checkInCoordinates || todayRecord.coordinates)!.lat},${(todayRecord.checkInCoordinates || todayRecord.coordinates)!.lng}`}>
+                      Lihat lokasi check-in di Maps
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -496,6 +541,11 @@ export const TraineeDashboard: React.FC = () => {
                   <p className="mt-0.5 text-xs text-[#6F7F8D]">
                     Lakukan check-out saat aktivitas selesai.
                   </p>
+                  {todayRecord?.checkOutCoordinates && (
+                    <a className="mt-1 inline-flex text-xs font-semibold text-[#28618F] hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${todayRecord.checkOutCoordinates.lat},${todayRecord.checkOutCoordinates.lng}`}>
+                      Lihat lokasi check-out di Maps
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -642,8 +692,12 @@ export const TraineeDashboard: React.FC = () => {
                           {formatShortDate(rec.date)}
                         </p>
                         <p className="mt-0.5 text-xs text-[#6F7F8D]">
-                          {rec.checkInTime ? `${rec.checkInTime} WIB` : '-'} &middot; {rec.notes || 'Lokasi tercatat'}
+                          {rec.checkInTime ? `${rec.checkInTime} WIB` : '-'} &middot; {rec.workMode || 'WFO'} &middot; {rec.notes || 'Lokasi tercatat'}
                         </p>
+                        {(rec.checkInCoordinates || rec.coordinates || rec.checkOutCoordinates) && <div className="mt-1 flex gap-3 text-[10px] font-semibold">
+                          {(rec.checkInCoordinates || rec.coordinates) && <a className="text-[#28618F] hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${(rec.checkInCoordinates || rec.coordinates)!.lat},${(rec.checkInCoordinates || rec.coordinates)!.lng}`}>Check-in Maps</a>}
+                          {rec.checkOutCoordinates && <a className="text-[#28618F] hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${rec.checkOutCoordinates.lat},${rec.checkOutCoordinates.lng}`}>Check-out Maps</a>}
+                        </div>}
                       </div>
                       <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold capitalize ${badgeStyle}`}>
                         {rec.status}

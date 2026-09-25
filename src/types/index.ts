@@ -47,7 +47,10 @@ export interface AttendanceRecord {
   verifiedBy?: string;
   verifiedAt?: string;
   location?: string;
+  workMode?: 'WFO' | 'WFH';
   coordinates?: { lat: number; lng: number };
+  checkInCoordinates?: { lat: number; lng: number };
+  checkOutCoordinates?: { lat: number; lng: number };
   notes?: string;
   photoUrl?: string;
   rejectionReason?: string;
