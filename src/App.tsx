@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
-import { RoleSwitcherModal } from './components/RoleSwitcherModal';
 import { AdminDashboard } from './components/Dashboard/AdminDashboard';
 import { MentorDashboard } from './components/Dashboard/MentorDashboard';
 import { TraineeDashboard } from './components/Dashboard/TraineeDashboard';
@@ -21,14 +20,12 @@ import {
   FileText,
   UserRound,
   FileSpreadsheet,
-  ChevronDown
 } from 'lucide-react';
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS } from './utils/dateUtils';
 
 const MainLayout: React.FC = () => {
   const { currentUser, kejuruanList, activeTab, setActiveTab, isAuthenticated } = useApp();
 
-  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [liveClock, setLiveClock] = useState('00.00.00');
   const [headerDate, setHeaderDate] = useState('');
@@ -103,7 +100,7 @@ const MainLayout: React.FC = () => {
 
   const roleBadgeLabel =
     currentUser.role === 'admin'
-      ? 'Admin demo'
+      ? 'Administrator'
       : currentUser.role === 'mentor'
       ? 'Mentor'
       : 'Peserta';
@@ -118,7 +115,6 @@ const MainLayout: React.FC = () => {
     <div className="min-h-screen bg-[#F4F6F8] text-[#123B59] flex flex-col font-sans">
       {/* Sidebar Navigation (Fixed on desktop, drawer on mobile) */}
       <Sidebar
-        onOpenRoleModal={() => setIsRoleModalOpen(true)}
         mobileOpen={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />
@@ -171,13 +167,6 @@ const MainLayout: React.FC = () => {
               </div>
             </div>
 
-            {/* Mobile Quick Role Button */}
-            <button
-              onClick={() => setIsRoleModalOpen(true)}
-              className="lg:hidden rounded-xl border border-[#E4EAF0] bg-white px-2.5 py-1.5 text-xs font-bold text-[#123B59] shadow-xs"
-            >
-              {roleBadgeLabel}
-            </button>
           </div>
 
           {/* Right Clock & Role Switcher Widget */}
@@ -193,15 +182,9 @@ const MainLayout: React.FC = () => {
                 {liveClock} WIB
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsRoleModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-[#E4EAF0] bg-[#F4F6F8] hover:bg-[#EAF2F8] px-3 py-2 text-xs font-semibold text-[#123B59] transition cursor-pointer"
-              title="Ganti peran pengguna"
-            >
-              <span>{roleBadgeLabel}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-[#6F7F8D]" />
-            </button>
+            <span className="rounded-xl border border-[#E4EAF0] bg-[#F4F6F8] px-3 py-2 text-xs font-semibold text-[#123B59]">
+              {roleBadgeLabel}
+            </span>
           </div>
         </header>
 
@@ -283,11 +266,6 @@ const MainLayout: React.FC = () => {
         </div>
       </nav>
 
-      {/* Role Switcher Modal */}
-      <RoleSwitcherModal
-        isOpen={isRoleModalOpen}
-        onClose={() => setIsRoleModalOpen(false)}
-      />
     </div>
   );
 };

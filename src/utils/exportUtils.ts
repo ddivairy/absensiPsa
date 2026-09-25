@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { User, AttendanceRecord, Kejuruan } from '../types';
 import { INDONESIAN_MONTHS, getDatesForMonth, getDaysInMonth, isWeekend } from './dateUtils';
-
+ 
 interface ExportParams {
   year: number;
   month: number; // 1-12

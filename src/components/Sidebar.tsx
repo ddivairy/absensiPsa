@@ -7,10 +7,6 @@ import {
   Users,
   FileText,
   Sliders,
-  ChevronDown,
-  ShieldCheck,
-  GraduationCap,
-  UserCheck,
   CheckCircle2,
   X,
   LogOut,
@@ -24,13 +20,11 @@ import { INDONESIAN_DAYS, INDONESIAN_MONTHS, getTodayDateString } from '../utils
 import punyaSkillLogo from '../assets/Logo PSA.jpeg';
 
 interface SidebarProps {
-  onOpenRoleModal: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  onOpenRoleModal,
   mobileOpen,
   onCloseMobile
 }) => {
@@ -201,18 +195,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
           <span className="text-[9px] font-bold tracking-[.13em] text-[#A9C7DE]">PERAN AKTIF</span>
-          <button
-            type="button"
-            onClick={() => {
-              onOpenRoleModal();
-              onCloseMobile();
-            }}
-            className="flex items-center gap-1 rounded-full bg-white/10 hover:bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white transition cursor-pointer"
-            title="Klik untuk beralih peran demo"
-          >
-            <span>{roleLabel}</span>
-            <ChevronDown className="w-3 h-3 text-white/60" />
-          </button>
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white">
+            {roleLabel}
+          </span>
+        </div>
+
+        <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] font-mono">
+          <span className="flex items-center gap-1.5 text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            TiDB Cloud
+          </span>
+          <span className="px-1.5 py-0.5 rounded bg-white/10 text-[#A9C7DE] text-[9px] font-bold">
+            JWT: {currentUser.role.toUpperCase()}
+          </span>
         </div>
       </section>
 
@@ -264,7 +259,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      {/* Logout / Switch Role Footer */}
+      {/* Logout Footer */}
       <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
         {currentUser.loginCode && (
           <span className="font-mono text-[10px]">
@@ -278,7 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onCloseMobile();
           }}
           className="inline-flex items-center gap-1.5 text-white/70 hover:text-[#D95B83] transition cursor-pointer ml-auto text-xs font-medium"
-          title="Keluar dari mode preview"
+          title="Keluar dari akun"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Keluar</span>

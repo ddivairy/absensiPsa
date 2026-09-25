@@ -11,11 +11,25 @@ export function generate8DigitLoginCode(): string {
 }
 
 /**
- * Generates a default user password (e.g., "pass1234")
+ * Generates an eight-digit numeric password.
  */
 export function generateDefaultPassword(): string {
-  const digits = Math.floor(1000 + Math.random() * 9000);
-  return `vokasi${digits}`;
+  return Math.floor(10000000 + Math.random() * 90000000).toString();
+}
+
+function readEightDigitValue(value: unknown): string {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < 100000000) {
+    return String(value).padStart(8, '0');
+  }
+  return value == null ? '' : String(value).trim();
+}
+
+function importedKejuruanId(programName: string): string {
+  let hash = 2166136261;
+  for (const char of programName.trim().toLowerCase()) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  }
+  return `kj-import-${(hash >>> 0).toString(36)}`;
 }
 
 /**
@@ -26,97 +40,26 @@ export function exportUsersToExcel(
   kejuruanList: Kejuruan[],
   filterRole: 'all' | 'trainee' | 'mentor' = 'all'
 ): void {
-  const targetUsers = users.filter(u => {
-    if (filterRole === 'all') return true;
-    return u.role === filterRole;
-  });
-
-  const titleRow = ['DATA AKUN LOGIN PESERTA & INSTRUKTUR (HADIRKU)'];
-  const subTitleRow = ['Lembaga Pelatihan Kejuruan Vokasi'];
-  const exportDate = new Date().toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
-  const metaRow = [
-    `Tanggal Ekspor: ${exportDate}`,
-    '',
-    `Total Akun: ${targetUsers.length} Orang`,
-    '',
-    `Filter: ${filterRole === 'all' ? 'Semua Akun' : filterRole === 'trainee' ? 'Peserta Trainee' : 'Instruktur Mentor'}`
-  ];
-  const blankRow: string[] = [];
-
-  const headers = [
-    'No',
-    'Peran (Role)',
-    'NIM / ID',
-    'Nama Lengkap',
-    'Kode Login (8 Digit)',
-    'Password',
-    'Kejuruan',
-    'Email',
-    'No. WhatsApp / Telepon',
-    'Status Akun',
-    'Tanggal Terdaftar'
-  ];
-
-  const dataRows = targetUsers.map((user, idx) => {
-    const roleLabel =
-      user.role === 'trainee' ? 'Peserta (Trainee)' : user.role === 'mentor' ? 'Instruktur (Mentor)' : 'Administrator';
-    return [
-      idx + 1,
-      roleLabel,
-      user.nim || '-',
-      user.name,
-      user.loginCode || generate8DigitLoginCode(),
-      user.password || '123456',
-      user.kejuruanName || '-',
-      user.email,
-      user.phone || '-',
-      user.status === 'active' ? 'Aktif' : 'Nonaktif',
-      user.joinedDate || new Date().toISOString().split('T')[0]
-    ];
-  });
-
-  const footerNote = [
-    'CATATAN PENGGUNAAN:',
-    'Kode Login (8 Digit) dan Password digunakan oleh Peserta & Mentor untuk masuk ke aplikasi HadirKu.',
-    'Harap jaga kerahasiaan password masing-masing.'
-  ];
-
-  const wsData = [
-    titleRow,
-    subTitleRow,
-    metaRow,
-    blankRow,
-    headers,
-    ...dataRows,
-    blankRow,
-    [footerNote[0]],
-    [footerNote[1]],
-    [footerNote[2]]
-  ];
-
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  // Column width configuration
-  ws['!cols'] = [
-    { wch: 6 },  // No
-    { wch: 22 }, // Peran
-    { wch: 16 }, // NIM
-    { wch: 26 }, // Nama
-    { wch: 22 }, // Kode Login (8 Digit)
-    { wch: 16 }, // Password
-    { wch: 26 }, // Kejuruan
-    { wch: 28 }, // Email
-    { wch: 18 }, // Phone
-    { wch: 12 }, // Status
-    { wch: 16 }  // Tanggal
-  ];
+  const targetUsers = users.filter(u => u.role !== 'admin' && (filterRole === 'all' || u.role === filterRole));
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Daftar_Akun_Login');
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Nama Lengkap', 'NIM / Kode Login (8 Digit)', 'Sandi (8 Digit)', 'Program Kejuruan', 'Role'],
+    ...targetUsers.map(user => [
+      user.name,
+      user.loginCode || user.nim || '',
+      // Password tidak dikirim oleh API karena hanya hash yang tersimpan.
+      user.password || '',
+      user.kejuruanName || '',
+      user.role
+    ])
+  ]);
+  ws['!cols'] = [{ wch: 28 }, { wch: 28 }, { wch: 20 }, { wch: 30 }, { wch: 16 }];
+  for (let row = 2; row <= targetUsers.length + 1; row++) {
+    const cell = ws[`B${row}`];
+    if (cell) cell.z = '@';
+  }
+  XLSX.utils.book_append_sheet(wb, ws, 'Data Pengguna');
 
   const fileLabel = filterRole === 'trainee' ? 'Peserta' : filterRole === 'mentor' ? 'Mentor' : 'Semua_Pengguna';
   const fileName = `HadirKu_Data_Akun_${fileLabel}_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -126,248 +69,242 @@ export function exportUsersToExcel(
 
 /**
  * Download a blank sample Excel template for bulk import
+ * Supports role-specific templates ('trainee', 'mentor', or 'all')
  */
-export function downloadUserImportTemplate(kejuruanList: Kejuruan[]): void {
-  const titleRow = ['TEMPLATE IMPORT DATA PESERTA / MENTOR HADIRKU'];
-  const instructionsRow = [
-    'Petunjuk: Kolom bertanda (*) wajib diisi. Kode Login (8 digit) & Password boleh dikosongkan agar dibuat otomatis oleh sistem.'
-  ];
-  const blankRow: string[] = [];
-
-  const headers = [
-    'Nama Lengkap (*)',
-    'Peran (trainee/mentor) (*)',
-    'NIM / ID Siswa (*)',
-    'Kode Kejuruan (*)',
-    'Kode Login 8 Digit (Opsional)',
-    'Password (Opsional)',
-    'Email (*)',
-    'No. WhatsApp'
-  ];
-
-  const sampleKj1 = kejuruanList[0]?.code || 'WD-01';
-  const sampleKj2 = kejuruanList[1]?.code || 'UX-02';
-
-  const sampleRows = [
-    [
-      'Budi Santoso',
-      'trainee',
-      'TRN-2026-101',
-      sampleKj1,
-      '84920194',
-      'vokasi123',
-      'budi.santoso@example.com',
-      '0812-3456-7890'
-    ],
-    [
-      'Ratna Sari Dewi',
-      'trainee',
-      'TRN-2026-102',
-      sampleKj2,
-      '', // empty -> auto-generated 8 digit
-      '', // empty -> auto-generated password
-      'ratna.dewi@example.com',
-      '0813-9876-5432'
-    ],
-    [
-      'Ahmad Syarifudin, M.Kom',
-      'mentor',
-      'MNT-WD-02',
-      sampleKj1,
-      '73920184',
-      'mentor2026',
-      'ahmad.mentor@example.com',
-      '0821-5544-3322'
-    ]
-  ];
-
-  const refKjHeader = ['DAFTAR REFERENSI KODE KEJURUAN:'];
-  const refKjRows = kejuruanList.map(k => [`${k.code} : ${k.name}`]);
-
-  const wsData = [
-    titleRow,
-    instructionsRow,
-    blankRow,
-    headers,
-    ...sampleRows,
-    blankRow,
-    blankRow,
-    refKjHeader,
-    ...refKjRows
-  ];
-
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [
-    { wch: 25 },
-    { wch: 18 },
-    { wch: 16 },
-    { wch: 16 },
-    { wch: 22 },
-    { wch: 18 },
-    { wch: 26 },
-    { wch: 18 }
-  ];
-
+export function downloadUserImportTemplate(
+  kejuruanList: Kejuruan[],
+  targetRole: 'all' | 'auto' | 'trainee' | 'mentor' = 'all'
+): void {
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Template_Import');
+  const headers = ['Nama Lengkap', 'NIM / Kode Login (8 Digit)', 'Sandi (8 Digit)', 'Program Kejuruan', 'Role'];
+  const sheetName = targetRole === 'mentor' ? 'Mentor' : targetRole === 'trainee' ? 'Peserta' : 'Data Pengguna';
+  const ws = XLSX.utils.aoa_to_sheet([headers]);
+  ws['!cols'] = [{ wch: 28 }, { wch: 28 }, { wch: 20 }, { wch: 30 }, { wch: 16 }];
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
-  XLSX.writeFile(wb, 'Template_Import_Akun_HadirKu.xlsx');
+  const referenceSheet = XLSX.utils.aoa_to_sheet([
+    ['Kode Program', 'Program Kejuruan'],
+    ...kejuruanList.map(program => [program.code, program.name]),
+  ]);
+  referenceSheet['!cols'] = [{ wch: 18 }, { wch: 32 }];
+  XLSX.utils.book_append_sheet(wb, referenceSheet, 'Referensi Program');
+
+  const fileName = targetRole === 'mentor'
+    ? 'Template_Import_Mentor.xlsx'
+    : targetRole === 'trainee'
+    ? 'Template_Import_Peserta.xlsx'
+    : 'Template_Import_Pengguna.xlsx';
+  XLSX.writeFile(wb, fileName);
 }
 
 /**
  * Parse an Excel file (.xlsx / .xls / .csv) into User candidate objects
+ * Supports explicit targetRole ('auto' | 'trainee' | 'mentor') to guarantee separation
  */
 export async function parseUsersFromExcelFile(
   file: File,
-  kejuruanList: Kejuruan[]
+  kejuruanList: Kejuruan[],
+  targetRole: 'auto' | 'trainee' | 'mentor' = 'auto'
 ): Promise<{ success: boolean; users?: Partial<User>[]; error?: string }> {
   try {
     const buffer = await file.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array' });
 
-    const firstSheetName = wb.SheetNames[0];
-    if (!firstSheetName) {
+    if (!wb.SheetNames || wb.SheetNames.length === 0) {
       return { success: false, error: 'File Excel tidak memiliki lembar kerja (sheet).' };
-    }
-
-    const ws = wb.Sheets[firstSheetName];
-    const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { header: 1 });
-
-    if (!rawRows || rawRows.length < 2) {
-      return { success: false, error: 'Format data Excel kosong atau tidak valid.' };
-    }
-
-    // Find the header row (look for "Nama" or "NIM" or "Peran")
-    let headerRowIdx = -1;
-    for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
-      const row = rawRows[i] as any[];
-      if (Array.isArray(row)) {
-        const text = row.map(c => String(c || '').toLowerCase()).join(' ');
-        if (text.includes('nama') || text.includes('nim') || text.includes('peran') || text.includes('role')) {
-          headerRowIdx = i;
-          break;
-        }
-      }
-    }
-
-    if (headerRowIdx === -1) {
-      return {
-        success: false,
-        error: 'Kolom header tidak ditemukan. Pastikan ada baris dengan kolom "Nama Lengkap" atau "NIM".'
-      };
-    }
-
-    const headerRow = (rawRows[headerRowIdx] as any[]).map(c => String(c || '').trim().toLowerCase());
-
-    // Map column indices
-    const findColIdx = (keywords: string[]) => {
-      return headerRow.findIndex(h => keywords.some(k => h.includes(k)));
-    };
-
-    const nameIdx = findColIdx(['nama']);
-    const nimIdx = findColIdx(['nim', 'nip', 'id']);
-    const roleIdx = findColIdx(['peran', 'role']);
-    const kjIdx = findColIdx(['kejuruan', 'kode kejuruan']);
-    const codeIdx = findColIdx(['kode login', 'login code', 'kode', 'kode 8 digit']);
-    const passIdx = findColIdx(['password', 'kata sandi', 'pw']);
-    const emailIdx = findColIdx(['email', 'surel']);
-    const phoneIdx = findColIdx(['telepon', 'whatsapp', 'phone', 'hp', 'no']);
-
-    if (nameIdx === -1) {
-      return { success: false, error: 'Kolom "Nama Lengkap" tidak ditemukan di dalam berkas Excel.' };
     }
 
     const parsedUsers: Partial<User>[] = [];
 
-    for (let r = headerRowIdx + 1; r < rawRows.length; r++) {
-      const row = rawRows[r] as any[];
-      if (!row || row.length === 0) continue;
+    // Parse all sheets or detect role by sheet name
+    for (const sheetName of wb.SheetNames) {
+      const ws = wb.Sheets[sheetName];
+      if (!ws) continue;
 
-      const rawName = row[nameIdx] ? String(row[nameIdx]).trim() : '';
-      if (!rawName || rawName.startsWith('CATATAN') || rawName.startsWith('DAFTAR') || rawName.startsWith('Petunjuk')) {
-        continue;
+      const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { header: 1 });
+      if (!rawRows || rawRows.length < 2) continue;
+
+      // Detect sheet-level role from sheet name
+      const sheetLower = sheetName.toLowerCase();
+      let sheetRole: Role | null = null;
+      if (
+        sheetLower.includes('mentor') ||
+        sheetLower.includes('instruktur') ||
+        sheetLower.includes('guru') ||
+        sheetLower.includes('dosen') ||
+        sheetLower.includes('pengajar')
+      ) {
+        sheetRole = 'mentor';
+      } else if (
+        sheetLower.includes('peserta') ||
+        sheetLower.includes('siswa') ||
+        sheetLower.includes('trainee') ||
+        sheetLower.includes('magang')
+      ) {
+        sheetRole = 'trainee';
       }
 
-      // Role parsing
-      let rawRole: Role = 'trainee';
-      if (roleIdx !== -1 && row[roleIdx]) {
-        const rVal = String(row[roleIdx]).toLowerCase();
-        if (rVal.includes('mentor') || rVal.includes('instruktur')) {
-          rawRole = 'mentor';
-        } else if (rVal.includes('admin')) {
-          rawRole = 'admin';
+      // Find the header row (look for "nama", "nim", "nip", "peran", "role")
+      let headerRowIdx = -1;
+      for (let i = 0; i < Math.min(rawRows.length, 12); i++) {
+        const row = rawRows[i] as any[];
+        if (Array.isArray(row)) {
+          const text = row.map(c => String(c || '').toLowerCase()).join(' ');
+          if (
+            text.includes('nama') ||
+            text.includes('nim') ||
+            text.includes('nip') ||
+            text.includes('peran') ||
+            text.includes('role') ||
+            text.includes('kejuruan')
+          ) {
+            headerRowIdx = i;
+            break;
+          }
         }
       }
 
-      // NIM / ID
-      const rawNim =
-        nimIdx !== -1 && row[nimIdx]
-          ? String(row[nimIdx]).trim()
-          : `${rawRole === 'mentor' ? 'MNT' : 'TRN'}-2026-${Math.floor(100 + Math.random() * 900)}`;
+      if (headerRowIdx === -1) continue;
 
-      // Kejuruan
-      let targetKj: Kejuruan | undefined = undefined;
-      if (kjIdx !== -1 && row[kjIdx]) {
-        const kjVal = String(row[kjIdx]).trim().toLowerCase();
-        targetKj = kejuruanList.find(
-          k =>
-            k.code.toLowerCase() === kjVal ||
-            k.name.toLowerCase().includes(kjVal) ||
-            kjVal.includes(k.code.toLowerCase())
-        );
-      }
-      if (!targetKj) {
-        targetKj = kejuruanList[0];
-      }
+      const headerRow = (rawRows[headerRowIdx] as any[]).map(c => String(c || '').trim().toLowerCase());
 
-      // 8-Digit Login Code
-      let rawCode = '';
-      if (codeIdx !== -1 && row[codeIdx]) {
-        const cVal = String(row[codeIdx]).replace(/\D/g, '').trim();
-        if (cVal.length >= 6) {
-          rawCode = cVal.padEnd(8, '0').slice(0, 8);
+      // Comprehensive keyword matching for columns
+      const findColIdx = (keywords: string[]) => {
+        return headerRow.findIndex(h => keywords.some(k => h.includes(k)));
+      };
+
+      const nameIdx = findColIdx(['nama']);
+      const combinedIdentifierIdx = findColIdx([
+        'nim / kode login', 'nim/kode login', 'nim - kode login', 'nim / code', 'nim/code', 'kode login / nim'
+      ]);
+      const nimIdx = findColIdx(['nim', 'nip', 'nis', 'nomor induk', 'id']);
+      const roleIdx = findColIdx(['peran', 'role', 'jabatan', 'kategori', 'tipe', 'posisi', 'sebagai', 'status peran']);
+      const kjIdx = findColIdx(['program kejuruan', 'kejuruan', 'program', 'jurusan', 'kelas']);
+      const codeIdx = findColIdx(['kode login', 'login code', 'kode 8 digit', 'code 8 digit', 'code', 'kode']);
+      const identifierIdx = combinedIdentifierIdx !== -1
+        ? combinedIdentifierIdx
+        : codeIdx !== -1
+        ? codeIdx
+        : nimIdx;
+      const passIdx = findColIdx(['password', 'kata sandi', 'sandi', 'pw', 'pass']);
+
+      if (nameIdx === -1) continue;
+
+      for (let r = headerRowIdx + 1; r < rawRows.length; r++) {
+        const row = rawRows[r] as any[];
+        if (!row || row.length === 0) continue;
+
+        const rawName = row[nameIdx] ? String(row[nameIdx]).trim() : '';
+        if (
+          !rawName ||
+          rawName.startsWith('CATATAN') ||
+          rawName.startsWith('DAFTAR') ||
+          rawName.startsWith('Petunjuk') ||
+          rawName.startsWith('TEMPLATE')
+        ) {
+          continue;
         }
-      }
-      if (!rawCode) {
-        rawCode = generate8DigitLoginCode();
-      }
 
-      // Password
-      let rawPass = '';
-      if (passIdx !== -1 && row[passIdx]) {
-        rawPass = String(row[passIdx]).trim();
+        // Determine Role with strict separation
+        let finalRole: Role | null = targetRole === 'auto' ? sheetRole : targetRole;
+
+        if (targetRole === 'mentor') {
+          finalRole = 'mentor';
+        } else if (targetRole === 'trainee') {
+          finalRole = 'trainee';
+        } else {
+          // Auto detection mode
+          if (roleIdx !== -1 && row[roleIdx]) {
+            const rVal = String(row[roleIdx]).trim().toLowerCase();
+            const mentorKeywords = ['mentor', 'instruktur', 'guru', 'pengajar', 'pembimbing', 'dosen', 'trainer', 'fasilitator', 'pendamping', 'mnt'];
+            const traineeKeywords = ['trainee', 'peserta', 'siswa', 'murid', 'mahasiswa', 'magang', 'pelajar', 'trn'];
+
+            if (mentorKeywords.some(k => rVal.includes(k))) {
+              finalRole = 'mentor';
+            } else if (traineeKeywords.some(k => rVal.includes(k))) {
+              finalRole = 'trainee';
+            } else if (sheetRole) {
+              finalRole = sheetRole;
+            } else {
+              return { success: false, error: `Role "${rVal}" pada baris ${r + 1} harus mentor atau trainee.` };
+            }
+          } else if (sheetRole) {
+            finalRole = sheetRole;
+          } else if (identifierIdx !== -1 && row[identifierIdx]) {
+            const nimVal = String(row[identifierIdx]).trim().toUpperCase();
+            if (nimVal.startsWith('MNT') || nimVal.startsWith('MENTOR') || nimVal.startsWith('NIP')) {
+              finalRole = 'mentor';
+            } else if (nimVal.startsWith('TRN') || nimVal.startsWith('NIM') || nimVal.startsWith('NIS')) {
+              finalRole = 'trainee';
+            }
+          }
+        }
+
+        if (!finalRole) {
+          return {
+            success: false,
+            error: `Role tidak dapat dideteksi untuk baris ${r + 1}. Pilih mode Mentor/Peserta atau gunakan nama sheet Mentor/Peserta.`,
+          };
+        }
+
+        // NIM / ID
+        const rawIdentifier = identifierIdx !== -1 ? readEightDigitValue(row[identifierIdx]) : '';
+        if (!/^\d{8}$/.test(rawIdentifier)) {
+          return {
+            success: false,
+            error: `NIM/Kode Login pada baris ${r + 1} harus tepat 8 digit angka. Atur kolom sebagai teks agar nol di depan tidak hilang.`,
+          };
+        }
+
+        // Kejuruan
+        const programValue = kjIdx !== -1 && row[kjIdx] ? String(row[kjIdx]).trim() : '';
+        const targetKj = programValue
+          ? kejuruanList.find(k =>
+              k.code.toLowerCase() === programValue.toLowerCase() ||
+              k.name.toLowerCase() === programValue.toLowerCase() ||
+              programValue.toLowerCase().startsWith(`${k.code.toLowerCase()} -`) ||
+              programValue.toLowerCase().startsWith(`${k.code.toLowerCase()} :`)
+            )
+          : undefined;
+        if (!programValue) {
+          return {
+            success: false,
+            error: `Program Kejuruan pada baris ${r + 1} kosong. Isi nama program sesuai data Excel.`,
+          };
+        }
+        // NIM and login code use the same eight-digit account identifier.
+        const rawCode = rawIdentifier;
+
+        // Password is an eight-digit numeric value.
+        let rawPass = '';
+        if (passIdx !== -1 && row[passIdx]) {
+          rawPass = readEightDigitValue(row[passIdx]);
+        }
+        if (!/^\d{8}$/.test(rawPass)) {
+          return { success: false, error: `Sandi pada baris ${r + 1} harus tepat 8 digit angka.` };
+        }
+
+        parsedUsers.push({
+          name: rawName,
+          nim: rawIdentifier,
+          role: finalRole,
+          kejuruanId: targetKj?.id || importedKejuruanId(programValue),
+          kejuruanName: targetKj?.name || programValue,
+          loginCode: rawCode,
+          password: rawPass,
+          email: `${rawIdentifier}@hadirku.id`,
+          phone: '',
+          status: 'active',
+          joinedDate: new Date().toISOString().split('T')[0],
+          avatar: `https://images.unsplash.com/photo-${
+            finalRole === 'mentor' ? '1534528741775-53994a69daeb' : '1535713875002-d1d0cf377fde'
+          }?w=150&auto=format&fit=crop&q=80`
+        });
       }
-      if (!rawPass) {
-        rawPass = generateDefaultPassword();
-      }
-
-      // Email
-      const rawEmail =
-        emailIdx !== -1 && row[emailIdx]
-          ? String(row[emailIdx]).trim()
-          : `${rawName.toLowerCase().replace(/[^a-z0-9]/g, '.')}@vokasi.id`;
-
-      // Phone
-      const rawPhone = phoneIdx !== -1 && row[phoneIdx] ? String(row[phoneIdx]).trim() : '0812-3456-7890';
-
-      parsedUsers.push({
-        name: rawName,
-        nim: rawNim,
-        role: rawRole,
-        kejuruanId: targetKj?.id || 'kj-1',
-        kejuruanName: targetKj?.name || 'Umum',
-        loginCode: rawCode,
-        password: rawPass,
-        email: rawEmail,
-        phone: rawPhone,
-        status: 'active',
-        joinedDate: new Date().toISOString().split('T')[0],
-        avatar: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 1000000)}?w=150&auto=format&fit=crop&q=80`
-      });
     }
 
     if (parsedUsers.length === 0) {
-      return { success: false, error: 'Tidak ada baris data peserta yang valid untuk diimpor.' };
+      return { success: false, error: 'Tidak ada baris data pengguna yang valid untuk diimpor. Pastikan file memiliki baris data di bawah judul kolom.' };
     }
 
     return { success: true, users: parsedUsers };

@@ -189,13 +189,13 @@ export const SettingsView: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              if (confirm('Yakin ingin mereset seluruh data demo kembali ke bawaan sistem?')) {
+              if (confirm('Muat ulang seluruh data dari database TiDB?')) {
                 resetToDefaultData();
               }
             }}
             className="rounded-xl border border-[#E3C4D0] bg-[#FCF3F6] hover:bg-[#fae3ec] px-4 py-2 text-xs font-bold text-[#B84469] transition cursor-pointer"
           >
-            Reset Data Demo ke Default
+            Muat Ulang Data TiDB
           </button>
 
           <button
