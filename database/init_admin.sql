@@ -48,7 +48,7 @@ INSERT INTO users (
 ) VALUES (
   'user-admin-1',
   'ADM-2026-001',
-  'Bambang Sudirman, M.Kom',
+  'Abdul Rozzak Junaidi',
   'admin@hadirku.id',
   'admin',
   'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',

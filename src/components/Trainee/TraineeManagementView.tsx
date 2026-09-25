@@ -358,9 +358,6 @@ export const TraineeManagementView: React.FC = () => {
           <h1 className="mt-1 text-2xl lg:text-3xl font-bold tracking-tight text-[#123B59]">
             Kelola Akun Peserta & Instruktur
           </h1>
-          <p className="text-xs text-[#6F7F8D] mt-1">
-            Input & Kelola Kredensial Login (Kode 8-Digit & Password), Ekspor/Impor Excel (.xlsx), dan Alokasi Kejuruan.
-          </p>
         </div>
 
         {/* Action Buttons: Add, Export, Import, Kejuruan, and Clear All */}
@@ -479,11 +476,6 @@ export const TraineeManagementView: React.FC = () => {
           )}
         </div>
 
-        {/* Info label about credentials */}
-        <div className="text-[11px] text-[#28618F] bg-[#EAF2F8] border border-[#C8DCEB] px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold">
-          <KeyRound className="w-3.5 h-3.5 text-[#4C83B5]" />
-          <span>Peserta & Mentor login via <strong>Kode 8-Digit</strong> & <strong>Password</strong> di bawah.</span>
-        </div>
       </div>
 
       {/* Filter and Search Bar */}
