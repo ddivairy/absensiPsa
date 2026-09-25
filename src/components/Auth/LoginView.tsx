@@ -84,7 +84,7 @@ export const LoginView: React.FC = () => {
         {/* App Branding */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-3">
-            <svg className="w-11 h-13 shrink-0" viewBox="0 0 50 58" aria-label="Logo HadirKu Skill" role="img">
+            <svg className="w-11 h-13 shrink-0" viewBox="0 0 50 58" aria-label="Logo Punya Skill Akademi" role="img">
               <path d="M4 3h42v32c0 10-9 16-21 21C13 51 4 45 4 35V3Z" fill="#123B59" />
               <path d="M6 5h38v29c0 9-8 14-19 19C14 48 6 43 6 34V5Z" fill="#0D2F47" />
               <path d="M10 29h30v5c-3 7-8 10-15 14-7-4-12-7-15-14v-5Z" fill="#fff" />
@@ -92,10 +92,8 @@ export const LoginView: React.FC = () => {
               <path d="M15 38c3 0 4 4 6 4 2 0 2-7 4-7s2 7 4 7c2 0 3-4 6-4" fill="none" stroke="#0D2F47" strokeWidth="2" />
             </svg>
             <div className="text-left">
-              <div className="brand-punya text-[#123B59]">hadir</div>
-              <div className="brand-skill">
-                SK<b>I</b>LL
-              </div>
+              <div className="brand-punya text-[#123B59]">PSA</div>
+              <div className="brand-skill">Punya Skill Akademi</div>
             </div>
           </div>
           <p className="text-[10px] font-bold tracking-[.16em] text-[#4C83B5] uppercase pt-1">
@@ -300,7 +298,7 @@ export const LoginView: React.FC = () => {
         {/* Footer info */}
         <div className="text-center text-xs text-[#6F7F8D] space-y-1">
           <p className="font-medium text-[#123B59]">
-            Presensi Magang Harian &middot; Punya SKILL Vokasi 2026
+            Presensi Magang Harian &middot; Punya Skill Akademi 2026
           </p>
           <p className="text-[11px] text-[#8C9AA8]">
             Database: TiDB AWS Cloud ap-southeast-1 &middot; JWT HMAC-SHA256

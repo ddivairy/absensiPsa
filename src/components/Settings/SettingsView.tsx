@@ -8,7 +8,7 @@ export const SettingsView: React.FC = () => {
   const [startTime, setStartTime] = useState(settings.startTime);
   const [lateLimitTime, setLateLimitTime] = useState(settings.lateLimitTime);
   const [endTime, setEndTime] = useState(settings.endTime);
-  const [locationName, setLocationName] = useState(settings.officeLocation.name);
+  const [locationName, setLocationName] = useState(settings.officeLocation.name || 'Punya Skill Akademi, Bandung');
   const [radiusMeters, setRadiusMeters] = useState(settings.officeLocation.radiusMeters);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -75,7 +75,7 @@ export const SettingsView: React.FC = () => {
                 className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5]"
                 required
               />
-              <span className="text-[11px] text-[#6F7F8D] mt-1 block">Waktu check-in resmi</span>
+              <span className="text-[11px] text-[#6F7F8D] mt-1 block">Waktu check-in resmi (09:00 WIB)</span>
             </div>
 
             <div>
@@ -89,7 +89,7 @@ export const SettingsView: React.FC = () => {
                 className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#C05621] font-bold outline-none focus:border-[#4C83B5]"
                 required
               />
-              <span className="text-[11px] text-[#6F7F8D] mt-1 block">Setelah jam ini dihitung Terlambat (T)</span>
+              <span className="text-[11px] text-[#6F7F8D] mt-1 block">Check-in setelah jam ini = Terlambat + pengurangan poin</span>
             </div>
 
             <div>

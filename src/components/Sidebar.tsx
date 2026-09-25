@@ -146,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarInner = (
-    <div className="flex flex-col h-full bg-[#123B59] text-white p-5 select-none w-64 md:w-[260px] overflow-y-auto">
+    <div className="flex flex-col h-full bg-[#123B59] text-white p-5 select-none w-[240px] overflow-y-auto sidebar-inner">
       {/* Brand Header */}
       <div className="flex items-center justify-between px-1">
         <button
@@ -164,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           title="Ke Halaman Utama"
         >
           {/* Logo Shield SVG from style.html */}
-          <svg className="logo-shield" viewBox="0 0 50 58" aria-label="Emblem HadirKu Skill" role="img">
+          <svg className="logo-shield" viewBox="0 0 50 58" aria-label="Emblem Punya Skill Akademi" role="img">
             <path d="M4 3h42v32c0 10-9 16-21 21C13 51 4 45 4 35V3Z" fill="#fff" />
             <path d="M6 5h38v29c0 9-8 14-19 19C14 48 6 43 6 34V5Z" fill="#0D2F47" />
             <path d="M10 29h30v5c-3 7-8 10-15 14-7-4-12-7-15-14v-5Z" fill="#fff" />
@@ -172,10 +172,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <path d="M15 38c3 0 4 4 6 4 2 0 2-7 4-7s2 7 4 7c2 0 3-4 6-4" fill="none" stroke="#0D2F47" strokeWidth="2" />
           </svg>
           <div>
-            <div className="brand-punya text-white">hadir</div>
-            <div className="brand-skill">
-              SK<b>I</b>LL
-            </div>
+            <div className="brand-punya text-white">PSA</div>
+            <div className="brand-skill">Punya Skill Akademi</div>
           </div>
         </button>
 
@@ -315,7 +313,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Desktop Fixed Sidebar (Matching style.html .desktop-sidebar) */}
       <aside
-        className="hidden lg:flex fixed left-5 top-5 bottom-5 w-[252px] bg-[#123B59] rounded-[20px] shadow-[0_18px_42px_rgba(13,47,71,0.17)] z-30 overflow-hidden"
+        className="hidden lg:flex fixed left-5 top-5 bottom-5 w-[240px] bg-[#123B59] rounded-[20px] shadow-[0_18px_42px_rgba(13,47,71,0.17)] z-30 overflow-hidden"
         aria-label="Navigasi utama"
       >
         {sidebarInner}

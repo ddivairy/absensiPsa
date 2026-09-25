@@ -27,9 +27,17 @@
   box-sizing: border-box;
 }
 
+/* ── Base: 16px root so rem-based spacing stays proportional.
+   We scale only font-size via explicit overrides below. ── */
+html {
+  font-size: 16px;
+}
+
 body {
   margin: 0;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1rem;        /* 16px — comfortable body text */
+  line-height: 1.6;
   color: var(--navy);
   background-color: var(--canvas);
   -webkit-font-smoothing: antialiased;
@@ -44,7 +52,32 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   outline-offset: 2px;
 }
 
-/* Surface cards matching style.html */
+/* ── Global text-size scale (larger than Tailwind defaults) ──────────────────
+   Tailwind default → Our scale
+   text-xs   12px  → 13px
+   text-sm   14px  → 15px
+   text-base 16px  → 17px
+   text-lg   18px  → 20px
+   text-xl   20px  → 22px
+   text-2xl  24px  → 26px
+   text-3xl  30px  → 32px
+   text-4xl  36px  → 38px
+   Hardcoded px classes also remapped.
+──────────────────────────────────────────────────────────────────────────── */
+.text-\[9px\]  { font-size: 11px !important; }
+.text-\[10px\] { font-size: 12px !important; }
+.text-\[11px\] { font-size: 13px !important; }
+.text-xs       { font-size: 13px !important; }
+.text-sm       { font-size: 15px !important; }
+.text-base     { font-size: 17px !important; }
+.text-lg       { font-size: 20px !important; }
+.text-xl       { font-size: 22px !important; }
+.text-2xl      { font-size: 26px !important; }
+.text-3xl      { font-size: 32px !important; }
+.text-4xl      { font-size: 38px !important; }
+.text-5xl      { font-size: 46px !important; }
+
+/* Surface cards */
 .surface {
   background: #ffffff;
   border: 1px solid var(--line);
@@ -60,7 +93,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   box-shadow: 0 12px 25px rgba(18, 59, 89, 0.09);
 }
 
-/* Sidebar Navigation Items */
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
 .side-nav-item {
   color: rgba(255, 255, 255, 0.7);
   transition: all 0.18s ease;
@@ -80,7 +113,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   color: #A9C7DE;
 }
 
-/* Mobile Nav Items */
+/* Sidebar scoped — font slightly smaller than main content */
+.sidebar-inner {
+  font-size: 14px;
+}
+.sidebar-inner .text-sm   { font-size: 14px !important; }
+.sidebar-inner .text-xs   { font-size: 12px !important; }
+.sidebar-inner .text-\[9px\]  { font-size: 10px !important; }
+.sidebar-inner .text-\[10px\] { font-size: 11px !important; }
+.sidebar-inner .text-\[11px\] { font-size: 12px !important; }
+
+/* ── Mobile Nav ──────────────────────────────────────────────────────────── */
 .mobile-nav-item.is-active {
   color: var(--blue);
 }
@@ -90,21 +133,21 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   color: var(--blue);
 }
 
-/* Metric card */
+/* ── Metric card ─────────────────────────────────────────────────────────── */
 .metric-card {
-  min-height: 138px;
+  min-height: 130px;
 }
 
-/* Calendar Cells */
+/* ── Calendar Cells ──────────────────────────────────────────────────────── */
 .calendar-cell {
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .calendar-cell.today {
   box-shadow: inset 0 0 0 2px var(--blue);
 }
 
-/* Timeline */
+/* ── Timeline ────────────────────────────────────────────────────────────── */
 .timeline-line {
   position: absolute;
   left: 12px;
@@ -114,32 +157,32 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   background: #DCE7EF;
 }
 
-/* Brand styling from style.html */
+/* ── Brand ───────────────────────────────────────────────────────────────── */
 .logo-shield {
-  width: 42px;
-  height: 48px;
+  width: 38px;
+  height: 44px;
   flex: none;
 }
 
 .brand-punya {
-  font-size: 21px;
-  font-weight: 700;
-  line-height: 0.85;
-  letter-spacing: -0.06em;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
 }
 
 .brand-skill {
-  font-size: 12px;
-  letter-spacing: 0.27em;
+  font-size: 10px;
+  letter-spacing: 0.08em;
   color: #A9C7DE;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .brand-skill b {
   color: var(--pink);
 }
 
-/* Custom Scrollbar */
+/* ── Custom Scrollbar ────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
