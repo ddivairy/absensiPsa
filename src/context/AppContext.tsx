@@ -50,13 +50,13 @@ interface AppContextType {
     startDate: string;
     endDate: string;
     reason: string;
-    attachmentName?: string;
-  }) => void;
+    attachmentUrl: string;
+  }) => Promise<{ success: boolean; message: string }>;
   reviewLeaveRequest: (
     id: string,
     status: 'approved' | 'rejected',
     reviewNotes?: string
-  ) => void;
+  ) => Promise<{ success: boolean; message: string }>;
   // Missions & Points system
   addMission: (missionData: Omit<Mission, 'id' | 'createdAt'>) => void;
   updateMission: (id: string, updates: Partial<Mission>) => void;
@@ -478,13 +478,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Submit Leave Request
-  const submitLeaveRequest = (req: {
+  const submitLeaveRequest = async (req: {
     type: 'izin' | 'sakit';
     startDate: string;
     endDate: string;
     reason: string;
-    attachmentName?: string;
-  }) => {
+    attachmentUrl: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    if (currentUser.role !== 'trainee') return { success: false, message: 'Hanya peserta yang dapat mengajukan izin.' };
+    if (jwtToken) {
+      const response = await api.createLeaveRequest(req);
+      if (response.success) setLeaveRequests(prev => [response.request, ...prev.filter(item => item.id !== response.request.id)]);
+      return { success: response.success, message: response.message };
+    }
+
     const start = new Date(req.startDate);
     const end = new Date(req.endDate);
     const diffTime = Math.abs(end.getTime() - start.getTime());
@@ -502,22 +509,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       endDate: req.endDate,
       daysCount: diffDays,
       reason: req.reason,
-      attachmentName: req.attachmentName || (req.type === 'sakit' ? 'surat_keterangan_sakit.pdf' : 'surat_izin.pdf'),
+      attachmentName: 'Tautan lampiran',
+      attachmentUrl: req.attachmentUrl,
       status: 'pending',
       submittedAt: `${getTodayDateString()} ${getCurrentTimeWIB()}`
     };
 
     setLeaveRequests(prev => [newLeave, ...prev]);
+    return { success: true, message: 'Mode offline: pengajuan disimpan di perangkat ini, belum masuk ke TiDB.' };
   };
 
   // Review Leave Request (Admin / Mentor)
-  const reviewLeaveRequest = (
+  const reviewLeaveRequest = async (
     id: string,
     status: 'approved' | 'rejected',
     reviewNotes?: string
-  ) => {
-    const targetLeave = leaveRequests.find(l => l.id === id);
-    if (!targetLeave) return;
+  ): Promise<{ success: boolean; message: string }> => {
+    let targetLeave = leaveRequests.find(l => l.id === id);
+    if (!targetLeave) {
+      return { success: false, message: 'Permohonan izin tidak ditemukan.' };
+    }
+
+    if (
+      currentUser.role !== 'admin' &&
+      (currentUser.role !== 'mentor' || targetLeave.kejuruanId !== currentUser.kejuruanId)
+    ) {
+      return { success: false, message: 'Anda tidak memiliki akses untuk memproses permohonan ini.' };
+    }
+
+    if (jwtToken) {
+      const response = await api.reviewLeaveRequest(id, status, reviewNotes);
+      if (!response.success) return { success: false, message: response.message };
+      targetLeave = response.request;
+    }
 
     setLeaveRequests(prev =>
       prev.map(l => {
@@ -573,6 +597,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [...recordsToAdd, ...filtered];
       });
     }
+    return { success: true, message: status === 'approved' ? 'Permohonan disetujui.' : 'Permohonan ditolak.' };
   };
 
   // Verify Attendance (Hierarchical: Admin verifies Mentor, Mentor verifies Trainee)
