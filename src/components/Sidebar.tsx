@@ -21,6 +21,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS, getTodayDateString } from '../utils/dateUtils';
+import punyaSkillLogo from '../assets/Logo PSA.jpeg';
 
 interface SidebarProps {
   onOpenRoleModal: () => void;
@@ -163,18 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="flex items-center gap-3 text-left hover:opacity-90 transition cursor-pointer group"
           title="Ke Halaman Utama"
         >
-          {/* Logo Shield SVG from style.html */}
-          <svg className="logo-shield" viewBox="0 0 50 58" aria-label="Emblem Punya Skill Akademi" role="img">
-            <path d="M4 3h42v32c0 10-9 16-21 21C13 51 4 45 4 35V3Z" fill="#fff" />
-            <path d="M6 5h38v29c0 9-8 14-19 19C14 48 6 43 6 34V5Z" fill="#0D2F47" />
-            <path d="M10 29h30v5c-3 7-8 10-15 14-7-4-12-7-15-14v-5Z" fill="#fff" />
-            <path d="M16 15c4-3 7 1 9 3 2-2 5-6 9-3v8c-3-2-6-2-9 0-3-2-6-2-9 0v-8Z" fill="#fff" />
-            <path d="M15 38c3 0 4 4 6 4 2 0 2-7 4-7s2 7 4 7c2 0 3-4 6-4" fill="none" stroke="#0D2F47" strokeWidth="2" />
-          </svg>
-          <div>
-            <div className="brand-punya text-white">PSA</div>
-            <div className="brand-skill">Punya Skill Akademi</div>
-          </div>
+          <img src={punyaSkillLogo} alt="Punya Skill" className="sidebar-logo" />
         </button>
 
         {/* Close button for mobile drawer */}
@@ -186,10 +176,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <X className="w-5 h-5" />
         </button>
       </div>
-
-      <p className="mt-4 px-1 text-[10px] font-bold tracking-[.16em] text-[#A9C7DE]">
-        PRESENSI MAGANG HARIAN
-      </p>
 
       {/* User Section / Card */}
       <section className="mt-4 rounded-2xl border border-white/10 bg-white/[.07] p-3.5">
