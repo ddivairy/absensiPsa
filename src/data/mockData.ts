@@ -4,53 +4,57 @@ import { getTodayDateString } from '../utils/dateUtils';
 export const INITIAL_KEJURUAN: Kejuruan[] = [
   {
     id: 'kj-1',
-    name: 'Web Development & Cloud',
-    code: 'WD-01',
-    category: 'Teknologi Informasi',
+    name: 'Pembuatan Sistem Informasi Pariwisata Berbasis Website',
+    code: 'SIP-01',
+    category: 'Teknologi Informasi dan Pariwisata',
     color: '#2563eb', // blue
-    description: 'Pengembangan aplikasi web modern full-stack, cloud computing, dan RESTful API.',
-    mentorId: 'user-mentor-1',
-    mentorName: 'Siti Nurhaliza, S.Kom'
+    description: 'Pembuatan sistem informasi pariwisata berbasis website.',
+    mentorName: 'Ayu / Vanesha'
   },
   {
     id: 'kj-2',
-    name: 'UI/UX & Product Design',
-    code: 'UX-02',
-    category: 'Desain Kreatif',
+    name: 'Pengembangan Web dengan Node.js dan React',
+    code: 'WEB-02',
+    category: 'Teknologi Informasi',
     color: '#8b5cf6', // purple
-    description: 'Perancangan antarmuka pengguna interaktif, desain sistem, dan user experience research.',
-    mentorId: 'user-mentor-2',
-    mentorName: 'Dimas Arya, M.Ds.'
+    description: 'Pengembangan aplikasi web menggunakan Node.js dan React.',
+    mentorName: 'Fadil'
   },
   {
     id: 'kj-3',
-    name: 'Data Analytics & AI',
-    code: 'DA-03',
-    category: 'Sains Data',
+    name: 'Pengoperasian Tools Generative AI untuk Konten Digital dan Bisnis',
+    code: 'SC-01',
+    category: 'Smart Creative',
     color: '#059669', // emerald
-    description: 'Analisis data bisnis, visualisasi dashboard interaktif, dan implementasi machine learning.',
-    mentorId: 'user-mentor-3',
-    mentorName: 'Rizky Ramadhan, M.Kom'
+    description: 'Pengoperasian tools Generative AI untuk konten digital dan bisnis.',
+    mentorName: 'Mas Dzikri'
   },
   {
     id: 'kj-4',
-    name: 'Digital Marketing & Growth',
-    code: 'DM-04',
-    category: 'Bisnis Digital',
+    name: 'Pembuatan Konten Visual untuk Sosial Media',
+    code: 'SC-02',
+    category: 'Smart Creative',
     color: '#d97706', // amber
-    description: 'Strategi pemasaran digital, SEO, performa iklan berbayar, dan social media management.',
-    mentorId: 'user-mentor-4',
-    mentorName: 'Nadia Putri, S.I.Kom'
+    description: 'Pembuatan konten visual untuk sosial media.',
+    mentorName: 'Mas Dzikri'
   },
   {
     id: 'kj-5',
-    name: 'Cyber Security & Network',
-    code: 'CS-05',
-    category: 'Keamanan Jaringan',
+    name: 'Optimalisasi Pemasaran Melalui Media Sosial',
+    code: 'SC-03',
+    category: 'Smart Creative',
     color: '#e11d48', // rose
-    description: 'Keamanan siber, ethical hacking, konfigurasi server Linux, dan infrastruktur jaringan.',
-    mentorId: 'user-mentor-5',
-    mentorName: 'Fajar Wicaksono, S.T.'
+    description: 'Optimalisasi pemasaran melalui media sosial.',
+    mentorName: 'Mas Dzikri'
+  },
+  {
+    id: 'kj-6',
+    name: 'Pemasangan Sistem Integrasi Bangunan Cerdas',
+    code: 'SIBC-06',
+    category: 'Teknologi Bangunan Cerdas',
+    color: '#0891b2',
+    description: 'Pemasangan sistem integrasi bangunan cerdas.',
+    mentorName: 'Davy'
   }
 ];
 

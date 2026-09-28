@@ -225,7 +225,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [kejuruanList, setKejuruanList] = useState<Kejuruan[]>(() => {
     const saved = localStorage.getItem('hadirku_kejuruan_v2');
-    return saved ? JSON.parse(saved) : INITIAL_KEJURUAN;
+    if (!saved) return INITIAL_KEJURUAN;
+
+    // Keep existing peserta IDs linked to their programs while refreshing the
+    // built-in program catalog to the current mentor and kejuruan assignments.
+    const savedPrograms: Kejuruan[] = JSON.parse(saved);
+    const initialById = new Map(INITIAL_KEJURUAN.map(program => [program.id, program] as const));
+    const savedIds = new Set(savedPrograms.map(program => program.id));
+    const refreshed = savedPrograms.map(program => initialById.get(program.id) || program);
+    INITIAL_KEJURUAN.forEach(program => {
+      if (!savedIds.has(program.id)) refreshed.push(program);
+    });
+    return refreshed;
   });
 
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {

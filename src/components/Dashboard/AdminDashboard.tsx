@@ -38,6 +38,12 @@ export const AdminDashboard: React.FC = () => {
 
   const mentors = useMemo(() => users.filter(u => u.role === 'mentor'), [users]);
   const trainees = useMemo(() => users.filter(u => u.role === 'trainee'), [users]);
+  const smartCreativeProgramIds = useMemo(() => kejuruanList
+    .filter(kj => kj.category === 'Smart Creative' ||
+      kj.name.includes('Generative AI') ||
+      kj.name.includes('Konten Visual untuk Sosial Media') ||
+      kj.name.includes('Optimalisasi Pemasaran Melalui Media Sosial'))
+    .map(kj => kj.id), [kejuruanList]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -122,7 +128,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Kejuruan statistics for trainees
   const kejuruanStats = useMemo(() => {
-    return kejuruanList.map(kj => {
+    const stats = kejuruanList.map(kj => {
       const kjTrainees = trainees.filter(t => t.kejuruanId === kj.id);
       const kjRecords = traineeTodayRecords.filter(r => r.kejuruanId === kj.id);
       const present = kjRecords.filter(r => r.status === 'hadir' || r.status === 'terlambat').length;
@@ -135,7 +141,40 @@ export const AdminDashboard: React.FC = () => {
         rate
       };
     });
-  }, [kejuruanList, trainees, traineeTodayRecords]);
+
+    const smartCreativePrograms = stats.filter(stat => smartCreativeProgramIds.includes(stat.kejuruan.id));
+    if (smartCreativePrograms.length < 2) return stats;
+
+    const totalTrainees = smartCreativePrograms.reduce((total, stat) => total + stat.totalTrainees, 0);
+    const presentCount = smartCreativePrograms.reduce((total, stat) => total + stat.presentCount, 0);
+    const smartCreativeIds = new Set(smartCreativePrograms.map(stat => stat.kejuruan.id));
+    return [
+      ...stats.filter(stat => !smartCreativeIds.has(stat.kejuruan.id)),
+      {
+        kejuruan: {
+          id: 'smart-creative',
+          name: 'Smart Creative',
+          code: 'SC',
+          category: 'Smart Creative',
+          color: '#059669',
+          description: 'Program Smart Creative yang mencakup tiga kejuruan.'
+        },
+        totalTrainees,
+        presentCount,
+        rate: totalTrainees > 0 ? Math.round((presentCount / totalTrainees) * 100) : 0
+      }
+    ];
+  }, [kejuruanList, smartCreativeProgramIds, trainees, traineeTodayRecords]);
+
+  const getProgramMentorLabel = (programName: string) => {
+    const name = programName.toLowerCase();
+    if (name === 'smart creative') return 'Mas Dzikri';
+    if (name.includes('sistem informasi pariwisata')) return 'Ayu / Vanesha';
+    if (name.includes('generative ai') || name.includes('konten visual untuk sosial media') || name.includes('optimalisasi pemasaran melalui media sosial')) return 'Mas Dzikri (Smart Creative)';
+    if (name.includes('node.js') || name.includes('react')) return 'Fadil';
+    if (name.includes('integrasi bangunan cerdas')) return 'Davy';
+    return 'Manajemen';
+  };
 
   // Handle Admin approving a mentor's check-in
   const handleVerifyMentor = (recordId: string, mentorName: string) => {
@@ -601,7 +640,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Kejuruan Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {kejuruanStats.map(stat => (
               <div
                 key={stat.kejuruan.id}
@@ -624,7 +663,7 @@ export const AdminDashboard: React.FC = () => {
                   {stat.kejuruan.name}
                 </div>
                 <div className="text-[10px] text-[#6F7F8D] mt-1">
-                  Mentor: <strong className="text-[#123B59]">{stat.kejuruan.mentorName?.split(' ')[0] || '-'}</strong>
+                  Mentor: <strong className="text-[#123B59]">{getProgramMentorLabel(stat.kejuruan.name)}</strong>
                 </div>
               </div>
             ))}
@@ -653,6 +692,7 @@ export const AdminDashboard: React.FC = () => {
                   className="text-xs py-2 px-3 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-semibold outline-none focus:border-[#4C83B5]"
                 >
                   <option value="all">Semua Kejuruan</option>
+                  {smartCreativeProgramIds.length > 1 && <option value="smart-creative">Smart Creative</option>}
                   {kejuruanList.map(kj => (
                     <option key={kj.id} value={kj.id}>
                       {kj.name}
@@ -676,7 +716,10 @@ export const AdminDashboard: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-[#E4EAF0]">
                   {trainees
-                    .filter(t => selectedKejuruanFilter === 'all' || t.kejuruanId === selectedKejuruanFilter)
+                    .filter(t => selectedKejuruanFilter === 'all' ||
+                      (selectedKejuruanFilter === 'smart-creative'
+                        ? smartCreativeProgramIds.includes(t.kejuruanId || '')
+                        : t.kejuruanId === selectedKejuruanFilter))
                     .map(trainee => {
                       const record = traineeTodayRecords.find(r => r.userId === trainee.id);
                       const isPending = record && record.verificationStatus === 'pending';

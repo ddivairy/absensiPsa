@@ -23,6 +23,16 @@ export const MonthlyRecapView: React.FC = () => {
 
   const isTrainee = currentUser.role === 'trainee';
   const isMentor = currentUser.role === 'mentor';
+  const normalizedMentorName = currentUser.name.trim().toLowerCase();
+  const isDzikri = isMentor && /dzikri/.test(normalizedMentorName);
+  const dzikriProgramNames = [
+    'Pengoperasian Tools Generative AI untuk Konten Digital dan Bisnis',
+    'Pembuatan Konten Visual untuk Sosial Media',
+    'Optimalisasi Pemasaran Melalui Media Sosial'
+  ];
+  const mentorKejuruanIds = isDzikri
+    ? kejuruanList.filter(k => dzikriProgramNames.includes(k.name)).map(k => k.id)
+    : isMentor && currentUser.kejuruanId ? [currentUser.kejuruanId] : [];
 
   const today = getTodayDateString();
   const [currentYear, currentMonth] = today.split('-').map(Number);
@@ -32,6 +42,8 @@ export const MonthlyRecapView: React.FC = () => {
 
   const defaultKj = isTrainee
     ? currentUser.kejuruanId || 'all'
+    : isDzikri
+    ? 'all'
     : isMentor && currentUser.kejuruanId
     ? currentUser.kejuruanId
     : 'all';
@@ -54,11 +66,11 @@ export const MonthlyRecapView: React.FC = () => {
     if (isTrainee) {
       return [currentUser];
     }
-    if (isMentor && currentUser.kejuruanId) {
-      return users.filter(u => u.role === 'trainee' && u.kejuruanId === currentUser.kejuruanId);
+    if (isMentor && mentorKejuruanIds.length) {
+      return users.filter(u => u.role === 'trainee' && mentorKejuruanIds.includes(u.kejuruanId || ''));
     }
     return users.filter(u => u.role === 'trainee');
-  }, [users, isTrainee, isMentor, currentUser]);
+  }, [users, isTrainee, isMentor, currentUser, mentorKejuruanIds.join('|')]);
 
   useEffect(() => {
     if (isTrainee) {
@@ -313,9 +325,9 @@ export const MonthlyRecapView: React.FC = () => {
               onChange={e => setSelectedKejuruanId(e.target.value)}
               className="text-xs py-2 px-3 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5] max-w-xs"
             >
-              {currentUser.role === 'admin' && <option value="all">Semua Program Kejuruan</option>}
+              {(currentUser.role === 'admin' || isDzikri) && <option value="all">{isDzikri ? 'Semua Program Smart Creative' : 'Semua Program Kejuruan'}</option>}
               {kejuruanList
-                .filter(k => currentUser.role === 'admin' || k.id === currentUser.kejuruanId)
+                .filter(k => currentUser.role === 'admin' || mentorKejuruanIds.includes(k.id))
                 .map(k => (
                   <option key={k.id} value={k.id}>
                     {k.code} - {k.name}
