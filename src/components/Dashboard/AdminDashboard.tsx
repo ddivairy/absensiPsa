@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Users,
@@ -23,6 +23,7 @@ export const AdminDashboard: React.FC = () => {
     users,
     kejuruanList,
     attendanceRecords,
+    refreshAttendanceRecords,
     leaveRequests,
     verifyAttendance,
     markAttendanceStatus,
@@ -35,6 +36,17 @@ export const AdminDashboard: React.FC = () => {
   const [selectedKejuruanFilter, setSelectedKejuruanFilter] = useState<string>('all');
   const [activeAdminView, setActiveAdminView] = useState<'mentors' | 'trainees'>('mentors');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const refresh = () => void refreshAttendanceRecords();
+    refresh();
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 15000);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.clearInterval(timer);
+    };
+  }, [refreshAttendanceRecords]);
 
   const mentors = useMemo(() => users.filter(u => u.role === 'mentor'), [users]);
   const trainees = useMemo(() => users.filter(u => u.role === 'trainee'), [users]);
@@ -129,8 +141,14 @@ export const AdminDashboard: React.FC = () => {
   // Kejuruan statistics for trainees
   const kejuruanStats = useMemo(() => {
     const stats = kejuruanList.map(kj => {
-      const kjTrainees = trainees.filter(t => t.kejuruanId === kj.id);
-      const kjRecords = traineeTodayRecords.filter(r => r.kejuruanId === kj.id);
+      const normalizedProgramName = kj.name.trim().toLocaleLowerCase();
+      const kjTrainees = trainees.filter(t =>
+        t.kejuruanId === kj.id || t.kejuruanName?.trim().toLocaleLowerCase() === normalizedProgramName
+      );
+      const traineeIds = new Set(kjTrainees.map(trainee => trainee.id));
+      const kjRecords = traineeTodayRecords.filter(r =>
+        traineeIds.has(r.userId) || r.kejuruanId === kj.id || r.kejuruanName?.trim().toLocaleLowerCase() === normalizedProgramName
+      );
       const present = kjRecords.filter(r => r.status === 'hadir' || r.status === 'terlambat').length;
       const rate = kjTrainees.length > 0 ? Math.round((present / kjTrainees.length) * 100) : 0;
 

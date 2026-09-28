@@ -50,12 +50,26 @@ export const MissionManagementView: React.FC = () => {
   const normalizeProgramName = (name?: string) => name?.trim().toLowerCase().replace(/\s+/g, ' ');
 
   useEffect(() => {
-    if (isTrainee) void refreshMissions();
-  }, [isTrainee, currentUser.id, refreshMissions]);
+    if (isAdmin || !jwtToken) return;
+    const refresh = () => void refreshMissions();
+    refresh();
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 15000);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.clearInterval(timer);
+    };
+  }, [isAdmin, currentUser.id, jwtToken, refreshMissions]);
   const mentorKejuruanIds = useMemo(
     () => getMentorKejuruanIds(currentUser, kejuruanList),
     [currentUser, kejuruanList]
   );
+  const mentorProgramNames = useMemo(() => new Set(
+    kejuruanList
+      .filter(program => mentorKejuruanIds.includes(program.id))
+      .map(program => normalizeProgramName(program.name))
+      .filter((name): name is string => !!name)
+  ), [kejuruanList, mentorKejuruanIds]);
 
   const [activeTab, setActiveTab] = useState<'missions' | 'submissions'>(
     isMentor ? 'missions' : 'missions'
@@ -104,14 +118,16 @@ export const MissionManagementView: React.FC = () => {
   // Filter missions
   const filteredMissions = useMemo(() => {
     return missions.filter(m => {
-      if (isMentor && !mentorKejuruanIds.includes(m.kejuruanId)) return false;
       const selectedProgram = kejuruanList.find(program => program.id === selectedKejuruanFilter);
-      const participantProgramName = isTrainee
-        ? currentUser.kejuruanName || selectedProgram?.name
-        : undefined;
-      const matchesParticipantProgram = isTrainee &&
-        normalizeProgramName(m.kejuruanName) === normalizeProgramName(participantProgramName);
-      if (selectedKejuruanFilter !== 'all' && m.kejuruanId !== selectedKejuruanFilter && !matchesParticipantProgram) {
+      const selectedProgramName = isTrainee || isMentor
+        ? selectedProgram?.name || currentUser.kejuruanName
+        : selectedProgram?.name;
+      const missionProgramName = normalizeProgramName(m.kejuruanName);
+      const matchesAssignedMentorProgram = isMentor && !!missionProgramName && mentorProgramNames.has(missionProgramName);
+      const matchesSelectedProgram = m.kejuruanId === selectedKejuruanFilter ||
+        (!!missionProgramName && missionProgramName === normalizeProgramName(selectedProgramName));
+      if (isMentor && !mentorKejuruanIds.includes(m.kejuruanId) && !matchesAssignedMentorProgram) return false;
+      if (selectedKejuruanFilter !== 'all' && !matchesSelectedProgram) {
         return false;
       }
       if (selectedDifficulty !== 'all' && m.difficulty !== selectedDifficulty) {
@@ -126,18 +142,23 @@ export const MissionManagementView: React.FC = () => {
       }
       return true;
     });
-  }, [missions, isMentor, isTrainee, currentUser.kejuruanName, kejuruanList, mentorKejuruanIds, selectedKejuruanFilter, selectedDifficulty, searchQuery]);
+  }, [missions, isMentor, isTrainee, currentUser.kejuruanName, kejuruanList, mentorKejuruanIds, mentorProgramNames, selectedKejuruanFilter, selectedDifficulty, searchQuery]);
 
   // Submissions filtered for Mentor / Admin
   const relevantSubmissions = useMemo(() => {
     return missionSubmissions.filter(sub => {
-      if (isMentor && !mentorKejuruanIds.includes(sub.kejuruanId)) return false;
-      if (selectedKejuruanFilter !== 'all' && sub.kejuruanId !== selectedKejuruanFilter) {
+      const mission = missions.find(item => item.id === sub.missionId);
+      const programName = normalizeProgramName(sub.kejuruanName || mission?.kejuruanName);
+      const programId = sub.kejuruanId || mission?.kejuruanId;
+      const selectedProgramName = kejuruanList.find(program => program.id === selectedKejuruanFilter)?.name || currentUser.kejuruanName;
+      const matchesAssignedMentorProgram = isMentor && !!programName && mentorProgramNames.has(programName);
+      if (isMentor && !mentorKejuruanIds.includes(programId || '') && !matchesAssignedMentorProgram) return false;
+      if (selectedKejuruanFilter !== 'all' && programId !== selectedKejuruanFilter && programName !== normalizeProgramName(selectedProgramName)) {
         return false;
       }
       return true;
     });
-  }, [missionSubmissions, isMentor, mentorKejuruanIds, selectedKejuruanFilter]);
+  }, [missionSubmissions, missions, isMentor, mentorKejuruanIds, mentorProgramNames, kejuruanList, currentUser.kejuruanName, selectedKejuruanFilter]);
 
   const pendingSubmissionsCount = useMemo(() => {
     return relevantSubmissions.filter(s => s.status === 'pending').length;
@@ -248,10 +269,14 @@ export const MissionManagementView: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleDeleteMission = (id: string, title: string) => {
+  const handleDeleteMission = async (id: string, title: string) => {
     if (confirm(`Apakah Anda yakin ingin menghapus misi "${title}"?`)) {
-      deleteMission(id);
-      showToast('Misi berhasil dihapus.');
+      try {
+        await deleteMission(id);
+        showToast('Misi berhasil dihapus.');
+      } catch (error) {
+        showToast(error instanceof Error ? `Gagal menghapus misi: ${error.message}` : 'Gagal menghapus misi dari server.');
+      }
     }
   };
 

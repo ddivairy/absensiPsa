@@ -128,11 +128,11 @@ export const TraineeDashboard: React.FC = () => {
     setIsLocating(true);
     setLocationError(null);
     navigator.geolocation.getCurrentPosition(
-      position => {
+      async position => {
         const coordinates = { lat: position.coords.latitude, lng: position.coords.longitude };
         const result = isCheckedIn
-          ? clockOut(undefined, coordinates)
-          : clockIn(dailyNote, undefined, coordinates, workMode);
+          ? await clockOut(undefined, coordinates)
+          : await clockIn(dailyNote, undefined, coordinates, workMode);
         setIsLocating(false);
         showToast(result.message);
       },
@@ -402,12 +402,12 @@ export const TraineeDashboard: React.FC = () => {
 
           {/* Big Action Button (Matching style.html) */}
           <div className="mt-5">
-            {!isCheckedIn && !todayLeave && (
-              <fieldset className="mb-3">
+            {!todayLeave && (
+              <fieldset className="mb-3" disabled={isCheckedIn}>
                 <legend className="mb-2 text-xs font-bold text-[#123B59]">Mode kerja hari ini</legend>
                 <div className="grid grid-cols-2 gap-2">
                   {(['WFO', 'WFH'] as const).map(mode => (
-                    <button key={mode} type="button" aria-pressed={workMode === mode} onClick={() => setWorkMode(mode)} className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${workMode === mode ? 'border-[#28618F] bg-[#EAF2F8] text-[#28618F]' : 'border-[#E4EAF0] bg-white text-[#6F7F8D]'}`}>
+                    <button key={mode} type="button" aria-pressed={(todayRecord?.workMode || workMode) === mode} onClick={() => setWorkMode(mode)} className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${(todayRecord?.workMode || workMode) === mode ? 'border-[#28618F] bg-[#EAF2F8] text-[#28618F]' : 'border-[#E4EAF0] bg-white text-[#6F7F8D]'} disabled:cursor-not-allowed disabled:opacity-70`}>
                       {mode === 'WFO' ? 'WFO · Kantor Bandung' : 'WFH · Kerja dari rumah'}
                     </button>
                   ))}

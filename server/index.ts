@@ -16,7 +16,7 @@ import {
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5010;
 const AUTH_COOKIE = 'hadirku_auth';
 const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 const authCookieOptions = {
@@ -828,9 +828,14 @@ app.put('/api/missions/:id', authenticateToken, authorizeRoles('admin', 'mentor'
 app.delete('/api/missions/:id', authenticateToken, authorizeRoles('admin', 'mentor'), async (req: AuthenticatedRequest, res) => {
   try {
     const pool = getPool();
+    const [rows] = await pool.query<any[]>('SELECT * FROM missions WHERE id = ? LIMIT 1', [req.params.id]);
+    const mission = rows[0];
+    // DELETE is idempotent; a retry after a successful delete stays successful.
+    if (!mission) return res.json({ success: true, message: 'Misi sudah dihapus.' });
     if (req.user?.role === 'mentor') {
-      const [rows] = await pool.query<any[]>('SELECT id FROM missions WHERE id = ? AND mentor_id = ? LIMIT 1', [req.params.id, req.user.id]);
-      if (!rows.length) return res.status(404).json({ success: false, message: 'Misi tidak ditemukan.' });
+      if (!mentorCanManageProgram(req, mission.kejuruan_id, mission.kejuruan_name)) {
+        return res.status(403).json({ success: false, message: 'Anda tidak dapat menghapus misi dari kejuruan ini.' });
+      }
     }
     await pool.query('DELETE FROM missions WHERE id = ?', [req.params.id]);
     res.json({ success: true, message: 'Misi berhasil dihapus.' });
@@ -956,9 +961,17 @@ app.patch('/api/leaves/:id/review', authenticateToken, authorizeRoles('mentor'),
 async function startServer() {
   try {
     await initDatabase();
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`[Server] Auth & TiDB API running on port ${PORT}`);
       console.log(`[Server] TiDB connected and 3 Roles seeded: Admin, Mentor, Trainee`);
+    });
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`[Server Error] Port ${PORT} sedang dipakai proses lain. Hentikan server lama yang memakai port ini, lalu jalankan npm run server lagi.`);
+      } else {
+        console.error('[Server Error] Gagal membuka HTTP server:', err);
+      }
+      process.exit(1);
     });
   } catch (err) {
     console.error('[Server Error] Failed to initialize TiDB:', err);

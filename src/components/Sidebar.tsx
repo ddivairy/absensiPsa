@@ -36,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const {
     currentUser,
+    users,
     kejuruanList,
     activeTab,
     setActiveTab,
@@ -72,6 +73,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const todayStr = getTodayDateString();
   const mentorKejuruanIds = getMentorKejuruanIds(currentUser, kejuruanList);
+  const mentorProgramNames = kejuruanList
+    .filter(program => mentorKejuruanIds.includes(program.id))
+    .map(program => program.name.trim().toLowerCase());
+  const mentorTraineeIds = new Set(users
+    .filter(user => user.role === 'trainee' && (
+      mentorKejuruanIds.includes(user.kejuruanId || '') ||
+      mentorProgramNames.includes(user.kejuruanName?.trim().toLowerCase() || '')
+    ))
+    .map(user => user.id));
 
   // Pending counts
   const pendingLeavesCount = leaveRequests.filter(l => {
@@ -93,7 +103,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const pendingTraineeVerifications = attendanceRecords.filter(r => {
     return (
       r.date === todayStr &&
-      mentorKejuruanIds.includes(r.kejuruanId) &&
+      (mentorKejuruanIds.includes(r.kejuruanId) ||
+        mentorProgramNames.includes(r.kejuruanName?.trim().toLowerCase() || '') ||
+        mentorTraineeIds.has(r.userId)) &&
       (r.userRole === 'trainee' || !r.userRole) &&
       r.verificationStatus === 'pending'
     );

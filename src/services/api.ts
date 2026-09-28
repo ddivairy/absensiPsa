@@ -72,7 +72,9 @@ export const api = {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const errorMsg = data?.message || `HTTP ${response.status}: Terjadi kesalahan server`;
+      const errorMsg = data?.error
+        ? `${data?.message || `HTTP ${response.status}: Terjadi kesalahan server`} (${data.error})`
+        : data?.message || `HTTP ${response.status}: Terjadi kesalahan server`;
       throw new Error(errorMsg);
     }
 
@@ -119,6 +121,13 @@ export const api = {
     return this.request<{ success: boolean; message: string }>('/api/app-data', {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  },
+
+  async saveAttendanceRecord(record: AttendanceRecord): Promise<{ success: boolean; message: string; duplicate?: boolean; attendanceRecord: AttendanceRecord }> {
+    return this.request<{ success: boolean; message: string; duplicate?: boolean; attendanceRecord: AttendanceRecord }>('/api/app-data/attendance', {
+      method: 'PUT',
+      body: JSON.stringify(record),
     });
   },
 
