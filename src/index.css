@@ -160,10 +160,200 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* ── Brand ───────────────────────────────────────────────────────────────── */
 .sidebar-logo {
   display: block;
-  width: 178px;
-  height: auto;
-  border-radius: 10px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  width: 52px;
+  height: 56px;
+  flex: none;
+  object-fit: contain;
+}
+
+.brand-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.brand-copy strong {
+  color: #ffffff;
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.brand-copy small {
+  margin-top: 5px;
+  color: #a9c7de;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .055em;
+  white-space: nowrap;
+}
+
+.login-brand-logo {
+  width: 68px;
+  height: 72px;
+  flex: none;
+  object-fit: contain;
+}
+
+.login-brand-copy > div {
+  color: #ffffff;
+  font-size: 31px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  line-height: .95;
+}
+
+.login-brand-copy p {
+  margin: 7px 0 0;
+  color: #a9c7de;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .035em;
+  line-height: 1.2;
+}
+
+/* The menu stays aligned with the sidebar's top-right control and opens below the header. */
+.theme-menu {
+  top: calc(100% + 10px);
+  right: 0;
+  left: auto;
+}
+
+/* Theme preferences are applied at the document level so every role and the login screen share one palette. */
+html[data-theme='dark'] {
+  --navy: #edf5fc;
+  --deep: #08131d;
+  --blue: #78b9ef;
+  --pale: #b8d3e7;
+  --canvas: #101b26;
+  --line: #2c4355;
+  --muted: #aebdca;
+  --pink: #f080a5;
+  background: #101b26;
+}
+
+html[data-theme='dark'] body {
+  color: #edf5fc;
+  background: #101b26;
+}
+
+html[data-theme='dark'] .surface {
+  background: #172532;
+  border-color: #2c4355;
+  box-shadow: 0 7px 20px rgba(0, 0, 0, .22);
+}
+
+html[data-theme='dark'] [class*="bg-white"],
+html[data-theme='dark'] .bg-\[\#F4F6F8\],
+html[data-theme='dark'] .bg-\[\#F8FAFB\],
+html[data-theme='dark'] .bg-\[\#EEF5FA\],
+html[data-theme='dark'] .bg-\[\#EEF6FB\] {
+  background-color: #172532 !important;
+}
+
+html[data-theme='dark'] .bg-\[\#EAF2F8\],
+html[data-theme='dark'] .bg-\[\#E9F3FA\],
+html[data-theme='dark'] .bg-\[\#DCEFFB\],
+html[data-theme='dark'] .bg-\[\#DDE5EB\] {
+  background-color: #1e3445 !important;
+}
+
+html[data-theme='dark'] .bg-\[\#FCF3F6\],
+html[data-theme='dark'] .bg-\[\#f9e7ee\],
+html[data-theme='dark'] .bg-\[\#fae3ec\],
+html[data-theme='dark'] .bg-rose-50 {
+  background-color: #392431 !important;
+}
+
+html[data-theme='dark'] .bg-\[\#FFF5E6\],
+html[data-theme='dark'] .bg-amber-50 {
+  background-color: #3a3020 !important;
+}
+
+html[data-theme='dark'] .bg-blue-50 { background-color: #1c3042 !important; }
+html[data-theme='dark'] .bg-emerald-50 { background-color: #17382f !important; }
+html[data-theme='dark'] .bg-purple-50 { background-color: #302644 !important; }
+html[data-theme='dark'] .bg-blue-100 { background-color: #23425c !important; }
+html[data-theme='dark'] .bg-rose-100 { background-color: #513043 !important; }
+html[data-theme='dark'] .bg-purple-100 { background-color: #443561 !important; }
+
+html[data-theme='dark'] .border-\[\#E4EAF0\],
+html[data-theme='dark'] .border-\[\#DCE4EC\],
+html[data-theme='dark'] .border-\[\#DCE7EF\],
+html[data-theme='dark'] .border-\[\#C8DCEB\],
+html[data-theme='dark'] .border-\[\#A9C7DE\] {
+  border-color: #2c4355 !important;
+}
+
+html[data-theme='dark'] .border-\[\#E3C4D0\],
+html[data-theme='dark'] .border-rose-200 { border-color: #71435a !important; }
+html[data-theme='dark'] .border-amber-200,
+html[data-theme='dark'] .border-orange-200 { border-color: #6b572e !important; }
+html[data-theme='dark'] .border-blue-200 { border-color: #355b79 !important; }
+html[data-theme='dark'] .border-emerald-200 { border-color: #356353 !important; }
+html[data-theme='dark'] .border-purple-200 { border-color: #5b4b79 !important; }
+
+html[data-theme='dark'] .text-\[\#123B59\],
+html[data-theme='dark'] .text-\[\#0D2F47\] {
+  color: #edf5fc !important;
+}
+
+html[data-theme='dark'] .text-\[\#6F7F8D\],
+html[data-theme='dark'] .text-\[\#8C9AA8\],
+html[data-theme='dark'] .text-\[\#A9B8C5\] {
+  color: #aebdca !important;
+}
+
+html[data-theme='dark'] .text-\[\#4C83B5\],
+html[data-theme='dark'] .text-\[\#28618F\] {
+  color: #78b9ef !important;
+}
+
+html[data-theme='dark'] .text-\[\#C8D6E2\] { color: #607c91 !important; }
+html[data-theme='dark'] .text-\[\#B84469\],
+html[data-theme='dark'] .text-\[\#D95B83\] { color: #f29ab6 !important; }
+html[data-theme='dark'] .text-\[\#C05621\] { color: #f2ad72 !important; }
+html[data-theme='dark'] .text-blue-700,
+html[data-theme='dark'] .text-blue-800 { color: #8acaff !important; }
+html[data-theme='dark'] .text-emerald-600,
+html[data-theme='dark'] .text-emerald-700,
+html[data-theme='dark'] .text-emerald-800 { color: #72d7b6 !important; }
+html[data-theme='dark'] .text-amber-600,
+html[data-theme='dark'] .text-amber-700,
+html[data-theme='dark'] .text-amber-800,
+html[data-theme='dark'] .text-amber-950 { color: #ffd18a !important; }
+html[data-theme='dark'] .text-purple-700,
+html[data-theme='dark'] .text-purple-800 { color: #c3adf6 !important; }
+html[data-theme='dark'] .text-rose-600,
+html[data-theme='dark'] .text-rose-700 { color: #f4a2bc !important; }
+
+html[data-theme='dark'] input,
+html[data-theme='dark'] textarea,
+html[data-theme='dark'] select {
+  color: #edf5fc;
+  background-color: #101b26 !important;
+  border-color: #385166 !important;
+}
+
+html[data-theme='dark'] input::placeholder,
+html[data-theme='dark'] textarea::placeholder {
+  color: #8093a3;
+}
+
+html[data-theme='dark'] .side-nav-item:hover,
+html[data-theme='dark'] .side-nav-item.is-active {
+  background: rgba(184, 211, 231, .18);
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-track { background: #101b26; }
+html[data-theme='dark'] ::-webkit-scrollbar-thumb { background: #385166; }
+
+@media (max-width: 380px) {
+  .login-brand-lockup { gap: 10px; padding-inline: 16px; }
+  .login-brand-logo { width: 59px; height: 63px; }
+  .login-brand-copy > div { font-size: 27px; }
+  .login-brand-copy p { font-size: 12px; }
 }
 
 /* ── Custom Scrollbar ────────────────────────────────────────────────────── */
