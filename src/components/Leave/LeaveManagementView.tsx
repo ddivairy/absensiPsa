@@ -22,8 +22,9 @@ export const LeaveManagementView: React.FC = () => {
   const [startDate, setStartDate] = useState<string>(today);
   const [endDate, setEndDate] = useState<string>(today);
   const [reason, setReason] = useState<string>('');
-  const [attachmentName, setAttachmentName] = useState<string>('');
+  const [attachmentUrl, setAttachmentUrl] = useState('');
   const [submittedSuccess, setSubmittedSuccess] = useState<boolean>(false);
+  const [submittedMessage, setSubmittedMessage] = useState('');
 
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState<string>('');
@@ -36,29 +37,61 @@ export const LeaveManagementView: React.FC = () => {
     return true;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim()) {
       alert('Mohon tuliskan alasan permohonan izin/sakit.');
       return;
     }
+    let normalizedAttachmentUrl: URL;
+    try {
+      normalizedAttachmentUrl = new URL(attachmentUrl.trim());
+      if (!['http:', 'https:'].includes(normalizedAttachmentUrl.protocol)) throw new Error('Invalid protocol');
+    } catch {
+      alert('Masukkan tautan lampiran yang valid (https://...).');
+      return;
+    }
 
-    submitLeaveRequest({
-      type,
-      startDate,
-      endDate,
-      reason,
-      attachmentName: attachmentName || (type === 'sakit' ? 'surat_keterangan_dokter.pdf' : 'surat_izin.pdf')
-    });
+    try {
+      const result = await submitLeaveRequest({ type, startDate, endDate, reason, attachmentUrl: normalizedAttachmentUrl.toString() });
+      if (!result.success) {
+        alert(result.message);
+        return;
+      }
+      setSubmittedMessage(result.message);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Pengajuan gagal dikirim. Coba lagi.');
+      return;
+    }
 
     setSubmittedSuccess(true);
     setReason('');
-    setAttachmentName('');
+    setAttachmentUrl('');
     setTimeout(() => setSubmittedSuccess(false), 3000);
   };
 
-  const handleReview = (id: string, status: 'approved' | 'rejected') => {
-    reviewLeaveRequest(id, status, reviewNotes || undefined);
+  const downloadLetterTemplate = () => {
+    const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
+    const documentHtml = `<!doctype html><html><head><meta charset="utf-8"><title>Template Surat Izin</title></head><body style="font-family:Arial,sans-serif;max-width:760px;margin:48px auto;line-height:1.7;color:#111"><p style="text-align:right">Bandung, ${escapeHtml(formatIndonesianDate(today))}</p><p>Kepada Yth.<br><b>Mentor/Pembimbing Punya Skill Akademi</b><br>di tempat</p><p><b>Perihal: Permohonan Izin Tidak Hadir</b></p><p>Dengan hormat,</p><p>Saya yang bertanda tangan di bawah ini:</p><table style="border-collapse:collapse"><tr><td style="padding:3px 16px 3px 0">Nama</td><td>: ${escapeHtml(currentUser.name)}</td></tr><tr><td style="padding:3px 16px 3px 0">NIM/Kode Peserta</td><td>: ${escapeHtml(currentUser.nim)}</td></tr><tr><td style="padding:3px 16px 3px 0">Program</td><td>: ${escapeHtml(currentUser.kejuruanName || '—')}</td></tr></table><p>Dengan ini mengajukan izin tidak hadir pada tanggal <b>${escapeHtml(formatIndonesianDate(startDate))}</b>${startDate !== endDate ? ` sampai dengan <b>${escapeHtml(formatIndonesianDate(endDate))}</b>` : ''} karena:</p><p style="min-height:72px;border-bottom:1px solid #888">${escapeHtml(reason.trim() || '[Tuliskan alasan izin]')}</p><p>Sebagai bahan pertimbangan, saya melampirkan dokumen pendukung. Saya akan bertanggung jawab untuk mengejar materi atau tugas yang tertinggal. Demikian permohonan ini saya sampaikan. Atas perhatian dan izin yang diberikan, saya ucapkan terima kasih.</p><p style="margin-top:52px">Hormat saya,</p><p style="margin-top:72px"><b>${escapeHtml(currentUser.name)}</b><br>${escapeHtml(currentUser.nim)}</p></body></html>`;
+    const url = URL.createObjectURL(new Blob([documentHtml], { type: 'application/msword;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Template_Surat_Izin_${currentUser.nim}.doc`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const handleReview = async (id: string, status: 'approved' | 'rejected') => {
+    try {
+      const result = await reviewLeaveRequest(id, status, reviewNotes || undefined);
+      if (!result.success) {
+        alert(result.message);
+        return;
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Permohonan gagal diproses. Coba lagi.');
+      return;
+    }
     setSelectedRequest(null);
     setReviewNotes('');
   };
@@ -71,12 +104,12 @@ export const LeaveManagementView: React.FC = () => {
           PENGAJUAN
         </p>
         <h1 className="mt-1 font-bold text-2xl lg:text-3xl text-[#123B59]">
-          {isTrainee ? 'Ajukan Izin & Sakit' : 'Verifikasi Permohonan Izin'}
+          {isTrainee ? 'Ajukan Izin & Sakit' : currentUser.role === 'admin' ? 'Daftar Permohonan Izin' : 'Verifikasi Permohonan Izin'}
         </h1>
         <p className="mt-1 text-sm text-[#6F7F8D]">
           {isTrainee
             ? 'Formulir resmi ketidakhadiran peserta pelatihan & magang kejuruan.'
-            : 'Tinjau dan setujui surat permohonan izin atau surat keterangan sakit peserta.'}
+            : currentUser.role === 'admin' ? 'Lihat permohonan izin dan lampiran peserta.' : 'Tinjau dan setujui surat permohonan izin atau surat keterangan sakit peserta.'}
         </p>
       </div>
 
@@ -96,7 +129,7 @@ export const LeaveManagementView: React.FC = () => {
             {submittedSuccess && (
               <div className="rounded-xl border border-[#C8DCEB] bg-[#EEF6FB] px-4 py-3 flex items-center gap-2.5 text-xs text-[#123B59] font-bold">
                 <Check className="w-4 h-4 text-[#4C83B5] shrink-0" />
-                <span>Pengajuan berhasil dikirim untuk diverifikasi mentor.</span>
+                <span>{submittedMessage}</span>
               </div>
             )}
 
@@ -174,29 +207,25 @@ export const LeaveManagementView: React.FC = () => {
 
             <div>
               <label className="text-xs font-bold text-[#123B59]">
-                Surat Keterangan / Lampiran (Opsional)
+                {type === 'sakit' ? 'Link Surat Keterangan Sakit (Wajib)' : 'Link Lampiran Surat Izin (Wajib)'}
               </label>
-              <div className="mt-1.5 flex items-center gap-2">
+              <div className="mt-1.5">
                 <input
-                  type="text"
-                  value={attachmentName}
-                  onChange={e => setAttachmentName(e.target.value)}
-                  placeholder={type === 'sakit' ? 'surat_keterangan_dokter.pdf' : 'surat_izin.pdf'}
-                  className="flex-1 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] px-3.5 py-2 text-sm text-[#123B59]"
+                  type="url"
+                  value={attachmentUrl}
+                  onChange={e => setAttachmentUrl(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  maxLength={2048}
+                  required
+                  className="block w-full rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] px-3.5 py-2.5 text-sm text-[#123B59]"
                 />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAttachmentName(type === 'sakit' ? 'surat_dokter_resmi.pdf' : 'surat_pernyataan.pdf')
-                  }
-                  className="rounded-xl border border-[#E4EAF0] bg-white hover:bg-[#F8FAFB] px-3 py-2 text-xs font-bold text-[#123B59] transition cursor-pointer"
-                >
-                  Pilih Contoh File
-                </button>
               </div>
               <p className="mt-1.5 text-xs text-[#6F7F8D]">
-                Nama file lampiran akan dicatat pada pengajuan Anda.
+                Tempel tautan berbagi file (Drive/Cloudinary) dan pastikan mentor dapat membukanya. {type === 'sakit' ? 'Lampirkan surat keterangan dokter.' : 'Isi template surat izin, unggah ke penyimpanan pilihan Anda, lalu tempel tautannya di sini.'}
               </p>
+              {type === 'izin' && <button type="button" onClick={downloadLetterTemplate} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#C8DCEB] bg-[#EEF6FB] px-3.5 py-2.5 text-xs font-bold text-[#28618F] hover:bg-[#EAF2F8]">
+                <FileText className="h-4 w-4" /> Unduh Template Surat Izin (.doc)
+              </button>}
             </div>
 
             <button
@@ -287,10 +316,11 @@ export const LeaveManagementView: React.FC = () => {
                         <p className="mt-2 text-sm text-[#123B59] bg-[#F8FAFB] p-2.5 rounded-xl border border-[#E4EAF0]">
                           "{leave.reason}"
                         </p>
-                        {leave.attachmentName && (
+                        {(leave.attachmentUrl || leave.attachmentName) && (
                           <p className="mt-2 text-xs text-[#4C83B5] flex items-center gap-1">
                             <Paperclip className="w-3 h-3" />
-                            <span>Lampiran: {leave.attachmentName}</span>
+                            <span>Lampiran: </span>
+                            {leave.attachmentUrl ? <a href={leave.attachmentUrl} target="_blank" rel="noreferrer" className="font-semibold hover:underline">Buka tautan lampiran</a> : <span>{leave.attachmentName}</span>}
                           </p>
                         )}
                         {leave.reviewedBy && (
@@ -306,7 +336,7 @@ export const LeaveManagementView: React.FC = () => {
                     </div>
 
                     {/* Mentor/Admin action controls */}
-                    {!isTrainee && isPending && (
+                    {currentUser.role === 'mentor' && isPending && (
                       <div className="mt-3 pt-3 border-t border-[#E4EAF0] flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
                         <input
                           type="text"

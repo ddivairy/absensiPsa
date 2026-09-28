@@ -26,7 +26,34 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Akun Administrator dibuat di MySQL / TiDB langsung
+-- 3. Pengajuan izin disimpan di TiDB; lampiran hanya berupa URL, bukan isi file
+CREATE TABLE IF NOT EXISTS leave_requests (
+  id VARCHAR(96) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  user_name VARCHAR(128) NOT NULL,
+  user_nim VARCHAR(64) NOT NULL,
+  kejuruan_id VARCHAR(64),
+  kejuruan_name VARCHAR(255),
+  request_type ENUM('izin', 'sakit') NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  days_count INT NOT NULL,
+  reason TEXT NOT NULL,
+  attachment_name VARCHAR(255),
+  attachment_url LONGTEXT,
+  status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+  submitted_at DATETIME NOT NULL,
+  reviewed_by VARCHAR(64),
+  reviewed_at DATETIME,
+  review_notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_leave_user (user_id),
+  INDEX idx_leave_status_dates (status, start_date, end_date),
+  INDEX idx_leave_kejuruan_status (kejuruan_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Akun Administrator dibuat di MySQL / TiDB langsung
 -- Password asli: "admin123"
 -- Hash bcrypt ($2b$10$...): $2b$10$wE8wVzD8hQ75bQk6cR3PZ.5xR1iG9H1n.K1k6cR3PZ.5xR1iG9H1n (atau hash valid)
 -- Di bawah ini adalah hash bcrypt standar untuk password 'admin123':
@@ -48,7 +75,7 @@ INSERT INTO users (
 ) VALUES (
   'user-admin-1',
   'ADM-2026-001',
-  'Bambang Sudirman, M.Kom',
+  'Abdul Rozzak Junaidi',
   'admin@hadirku.id',
   'admin',
   'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',

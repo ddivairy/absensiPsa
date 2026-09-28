@@ -30,7 +30,7 @@ INSERT INTO absensi_db.users (
 ) VALUES (
   'user-admin-1',           -- ID unik (ganti jika sudah ada)
   'ADM-2026-001',           -- NIM / kode identitas admin
-  'Bambang Sudirman, M.Kom', -- Nama lengkap
+  'Abdul Rozzak Junaidi', -- Nama lengkap
   'admin@hadirku.id',       -- Email (dipakai untuk login Tab Administrator)
   'admin',
   '0812-3456-7890',
@@ -40,7 +40,7 @@ INSERT INTO absensi_db.users (
   '$2b$10$1i2uNDesRLHYB5sDcN/Jk./Bs1o1dOP9RkhPCiOzeKobM2kLR0Hnu' -- bcrypt hash "admin123"
 )
 ON DUPLICATE KEY UPDATE
-  name           = VALUES(name),
+  name           = 'Abdul Rozzak Junaidi',
   role           = VALUES(role),
   password_hash  = VALUES(password_hash),
   status         = VALUES(status);

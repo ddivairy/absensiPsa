@@ -67,12 +67,26 @@ appDataRouter.get('/', authenticateToken, async (req: AuthenticatedRequest, res:
       const [rows] = await pool.query<any[]>(value === null ? `SELECT * FROM ${table}` : `SELECT * FROM ${table} WHERE ${field} = ?`, value === null ? [] : [value]);
       return rows;
     };
+    const mentorKejuruanIds = user.role === 'mentor'
+      ? [...new Set(kejuruanRows.map((row: any) => String(row.id)))]
+      : [];
+    const scopedKejuruanQuery = async (table: string, field: string, ids: string[], personalValue: string) => {
+      if (user.role === 'admin') return scopedQuery(table, '', null);
+      if (user.role === 'trainee') return scopedQuery(table, field, personalValue);
+      if (!ids.length) return [];
+      const placeholders = ids.map(() => '?').join(',');
+      const [rows] = await pool.query<any[]>(
+        `SELECT * FROM ${table} WHERE ${field} IN (${placeholders})`,
+        ids
+      );
+      return rows;
+    };
     const [attendanceRows, leaveRows, missionRows, submissionRows, reportRows, settingRows] = await Promise.all([
-      scopedQuery('attendance_records', user.role === 'admin' ? '' : user.role === 'mentor' ? 'kejuruan_id' : 'user_id', scope),
-      scopedQuery('leave_requests', user.role === 'admin' ? '' : user.role === 'mentor' ? 'kejuruan_id' : 'user_id', scope),
-      scopedQuery('missions', user.role === 'admin' ? '' : 'kejuruan_id', user.role === 'admin' ? null : user.kejuruanId || ''),
-      scopedQuery('mission_submissions', user.role === 'admin' ? '' : user.role === 'mentor' ? 'kejuruan_id' : 'trainee_id', scope),
-      scopedQuery('daily_reports', user.role === 'admin' ? '' : user.role === 'mentor' ? 'kejuruan_id' : 'trainee_id', scope),
+      scopedKejuruanQuery('attendance_records', user.role === 'trainee' ? 'user_id' : 'kejuruan_id', mentorKejuruanIds, user.id),
+      scopedKejuruanQuery('leave_requests', user.role === 'trainee' ? 'user_id' : 'kejuruan_id', mentorKejuruanIds, user.id),
+      scopedKejuruanQuery('missions', 'kejuruan_id', mentorKejuruanIds, user.kejuruanId || ''),
+      scopedKejuruanQuery('mission_submissions', user.role === 'trainee' ? 'trainee_id' : 'kejuruan_id', mentorKejuruanIds, user.id),
+      scopedKejuruanQuery('daily_reports', user.role === 'trainee' ? 'trainee_id' : 'kejuruan_id', mentorKejuruanIds, user.id),
       pool.query<any[]>('SELECT * FROM attendance_settings ORDER BY updated_at DESC LIMIT 1'),
     ]);
     const setting = settingRows[0][0];
@@ -103,8 +117,15 @@ appDataRouter.put('/', authenticateToken, async (req: AuthenticatedRequest, res:
   const lists: Record<string, any[]> = {};
   for (const key of collections) lists[key] = Array.isArray(body[key]) ? body[key] : [];
 
+  const pool = getPool();
+  const mentorKejuruanIds = user.role === 'mentor'
+    ? [...new Set((await pool.query<any[]>(
+        'SELECT id FROM kejuruan WHERE id = ? OR mentor_id = ?',
+        [user.kejuruanId || '', user.id]
+      ))[0].map((row: any) => String(row.id)))]
+    : [];
   const own = (row: any) => row && (row.userId === user.id || row.traineeId === user.id);
-  const inKejuruan = (row: any) => row && user.kejuruanId && row.kejuruanId === user.kejuruanId;
+  const inKejuruan = (row: any) => row && mentorKejuruanIds.includes(String(row.kejuruanId || ''));
   if (user.role === 'trainee') {
     if (lists.kejuruanList.length || lists.missions.length || body.settings) {
       return res.status(403).json({ success: false, message: 'Peserta tidak diizinkan mengubah data master.' });
@@ -119,7 +140,6 @@ appDataRouter.put('/', authenticateToken, async (req: AuthenticatedRequest, res:
     }
   }
 
-  const pool = getPool();
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -202,8 +222,22 @@ appDataRouter.delete('/:collection/:id', authenticateToken, async (req: Authenti
     const pool = getPool();
     if (user.role === 'admin') {
       await pool.query(`DELETE FROM ${target.table} WHERE id = ?`, [id]);
+    } else if (user.role === 'mentor') {
+      const [programRows] = await pool.query<any[]>(
+        'SELECT id FROM kejuruan WHERE id = ? OR mentor_id = ?',
+        [user.kejuruanId || '', user.id]
+      );
+      const programIds = [...new Set(programRows.map((row: any) => String(row.id)))];
+      if (!programIds.length) {
+        return res.status(403).json({ success: false, message: 'Mentor tidak memiliki program kejuruan yang dapat dikelola.' });
+      }
+      const placeholders = programIds.map(() => '?').join(',');
+      await pool.query(
+        `DELETE FROM ${target.table} WHERE id = ? AND ${target.scopeColumn} IN (${placeholders})`,
+        [id, ...programIds]
+      );
     } else {
-      const scopeValue = user.role === 'trainee' ? user.id : user.kejuruanId || '';
+      const scopeValue = user.id;
       await pool.query(`DELETE FROM ${target.table} WHERE id = ? AND ${target.scopeColumn} = ?`, [id, scopeValue]);
     }
     return res.json({ success: true });
