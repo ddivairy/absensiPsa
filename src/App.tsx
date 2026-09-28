@@ -14,6 +14,7 @@ import { MissionManagementView } from './components/Missions/MissionManagementVi
 import { HallOfFameView } from './components/HallOfFame/HallOfFameView';
 import { MentorHallOfFameView } from './components/HallOfFame/MentorHallOfFameView';
 import { DailyReportView } from './components/DailyReport/DailyReportView';
+import psaLogo from './assets/2D PSA LOGO.png';
 import {
   Menu,
   Clock,
@@ -132,21 +133,19 @@ const MainLayout: React.FC = () => {
         <header className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div className="flex min-w-0 flex-col gap-3 lg:block">
             {/* Mobile Brand with Hamburger */}
-            <div className="lg:hidden flex items-center gap-2.5">
+            <div className="mobile-brand-header lg:hidden flex min-w-0 items-center gap-2">
               <button
                 onClick={() => setMobileSidebarOpen(true)}
-                className="p-2 rounded-xl bg-white border border-[#E4EAF0] text-[#123B59] hover:bg-[#F8FAFB] transition cursor-pointer"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-[#E4EAF0] text-[#123B59] hover:bg-[#F8FAFB] transition cursor-pointer"
                 aria-label="Buka Menu Navigasi"
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="h-5 w-5" />
               </button>
-              <div className="flex items-center gap-2">
-                <svg className="h-8 w-7" viewBox="0 0 50 58" aria-hidden="true">
-                  <path d="M4 3h42v32c0 10-9 16-21 21C13 51 4 45 4 35V3Z" fill="#123B59" />
-                  <path d="M16 15c4-3 7 1 9 3 2-2 5-6 9-3v8c-3-2-6-2-9 0-3-2-6-2-9 0v-8Z" fill="#fff" />
-                </svg>
-                <span className="font-bold tracking-tight text-[#123B59]">
-                  PSA <span className="font-medium text-[#4C83B5]">Punya Skill Akademi</span>
+              <div className="mobile-brand-lockup flex min-w-0 items-center gap-2">
+                <img src={psaLogo} alt="" className="mobile-brand-logo" />
+                <span className="mobile-brand-copy">
+                  <strong>PSA</strong>
+                  <small>Punya Skill Akademi</small>
                 </span>
               </div>
             </div>

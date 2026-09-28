@@ -207,6 +207,45 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   white-space: nowrap;
 }
 
+.mobile-brand-header {
+  min-height: 42px;
+}
+
+.mobile-brand-lockup {
+  flex: 0 1 auto;
+}
+
+.mobile-brand-logo {
+  display: block;
+  width: 38px;
+  height: 41px;
+  flex: none;
+  object-fit: contain;
+}
+
+.mobile-brand-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.mobile-brand-copy strong {
+  color: var(--navy);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.mobile-brand-copy small {
+  margin-top: 4px;
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .025em;
+  white-space: nowrap;
+}
+
 .login-brand-logo {
   width: 68px;
   height: 72px;
