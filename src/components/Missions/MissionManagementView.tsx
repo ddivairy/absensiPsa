@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { formatIndonesianDate, getTodayDateString } from '../../utils/dateUtils';
 import { getMentorKejuruanIds } from '../../utils/mentorKejuruan';
+import { getKejuruanFilterOptions, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
 
 export const MissionManagementView: React.FC = () => {
   const {
@@ -70,13 +71,18 @@ export const MissionManagementView: React.FC = () => {
       .map(program => normalizeProgramName(program.name))
       .filter((name): name is string => !!name)
   ), [kejuruanList, mentorKejuruanIds]);
+  const mentorHasSubPrograms = isMentor && mentorKejuruanIds.some(id =>
+    kejuruanList.find(program => program.id === id)?.subPrograms?.length
+  );
 
   const [activeTab, setActiveTab] = useState<'missions' | 'submissions'>(
     isMentor ? 'missions' : 'missions'
   );
 
   const [selectedKejuruanFilter, setSelectedKejuruanFilter] = useState<string>(
-    isMentor ? (mentorKejuruanIds.length > 1 ? 'all' : mentorKejuruanIds[0] || 'all') : isTrainee ? currentUser.kejuruanId || 'all' : 'all'
+    isMentor ? (mentorKejuruanIds.length > 1 || mentorHasSubPrograms ? 'all' : mentorKejuruanIds[0] || 'all') : isTrainee && currentUser.kejuruanName
+      ? getKejuruanFilterOptions(kejuruanList).find(option => option.programId === currentUser.kejuruanId && option.name.toLowerCase() === currentUser.kejuruanName?.toLowerCase())?.value || currentUser.kejuruanId || 'all'
+      : isTrainee ? currentUser.kejuruanId || 'all' : 'all'
   );
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -94,6 +100,11 @@ export const MissionManagementView: React.FC = () => {
   const [formKejuruanId, setFormKejuruanId] = useState(
     isMentor ? mentorKejuruanIds[0] || kejuruanList[0]?.id : kejuruanList[0]?.id
   );
+  const [formKejuruanName, setFormKejuruanName] = useState(() => {
+    const selected = kejuruanList.find(program => program.id === formKejuruanId);
+    return selected?.subPrograms?.[0] || selected?.name || '';
+  });
+  const selectedFormKejuruan = kejuruanList.find(program => program.id === formKejuruanId);
 
   // Modal states for submitting mission work (Trainee)
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
@@ -118,13 +129,14 @@ export const MissionManagementView: React.FC = () => {
   // Filter missions
   const filteredMissions = useMemo(() => {
     return missions.filter(m => {
-      const selectedProgram = kejuruanList.find(program => program.id === selectedKejuruanFilter);
-      const selectedProgramName = isTrainee || isMentor
+      const selectedOption = getKejuruanFilterOptions(kejuruanList).find(option => option.value === selectedKejuruanFilter);
+      const selectedProgram = kejuruanList.find(program => program.id === (selectedOption?.programId || selectedKejuruanFilter));
+      const selectedProgramName = selectedOption?.name || (isTrainee || isMentor
         ? selectedProgram?.name || currentUser.kejuruanName
-        : selectedProgram?.name;
+        : selectedProgram?.name);
       const missionProgramName = normalizeProgramName(m.kejuruanName);
       const matchesAssignedMentorProgram = isMentor && !!missionProgramName && mentorProgramNames.has(missionProgramName);
-      const matchesSelectedProgram = m.kejuruanId === selectedKejuruanFilter ||
+      const matchesSelectedProgram = matchesKejuruanFilter(selectedKejuruanFilter, kejuruanList, m.kejuruanId, m.kejuruanName) ||
         (!!missionProgramName && missionProgramName === normalizeProgramName(selectedProgramName));
       if (isMentor && !mentorKejuruanIds.includes(m.kejuruanId) && !matchesAssignedMentorProgram) return false;
       if (selectedKejuruanFilter !== 'all' && !matchesSelectedProgram) {
@@ -150,10 +162,11 @@ export const MissionManagementView: React.FC = () => {
       const mission = missions.find(item => item.id === sub.missionId);
       const programName = normalizeProgramName(sub.kejuruanName || mission?.kejuruanName);
       const programId = sub.kejuruanId || mission?.kejuruanId;
-      const selectedProgramName = kejuruanList.find(program => program.id === selectedKejuruanFilter)?.name || currentUser.kejuruanName;
+      const selectedOption = getKejuruanFilterOptions(kejuruanList).find(option => option.value === selectedKejuruanFilter);
+      const selectedProgramName = selectedOption?.name || kejuruanList.find(program => program.id === selectedKejuruanFilter)?.name || currentUser.kejuruanName;
       const matchesAssignedMentorProgram = isMentor && !!programName && mentorProgramNames.has(programName);
       if (isMentor && !mentorKejuruanIds.includes(programId || '') && !matchesAssignedMentorProgram) return false;
-      if (selectedKejuruanFilter !== 'all' && programId !== selectedKejuruanFilter && programName !== normalizeProgramName(selectedProgramName)) {
+      if (!matchesKejuruanFilter(selectedKejuruanFilter, kejuruanList, programId, sub.kejuruanName || mission?.kejuruanName) && programName !== normalizeProgramName(selectedProgramName)) {
         return false;
       }
       return true;
@@ -184,7 +197,10 @@ export const MissionManagementView: React.FC = () => {
     setFormCategory('');
     setFormDueDate('');
     setFormSubmissionGuide('Sertakan tautan repositori GitHub / Figma / Google Drive beserta catatan ringkasan pengerjaan.');
-    setFormKejuruanId(isMentor ? mentorKejuruanIds[0] || kejuruanList[0]?.id : kejuruanList[0]?.id);
+    const targetId = isMentor ? mentorKejuruanIds[0] || kejuruanList[0]?.id : kejuruanList[0]?.id;
+    const targetProgram = kejuruanList.find(program => program.id === targetId);
+    setFormKejuruanId(targetId);
+    setFormKejuruanName(targetProgram?.subPrograms?.[0] || targetProgram?.name || '');
     setIsModalOpen(true);
   };
 
@@ -199,6 +215,7 @@ export const MissionManagementView: React.FC = () => {
     setFormDueDate(m.dueDate);
     setFormSubmissionGuide(m.submissionGuide || '');
     setFormKejuruanId(m.kejuruanId);
+    setFormKejuruanName(m.kejuruanName);
     setIsModalOpen(true);
   };
 
@@ -236,7 +253,7 @@ export const MissionManagementView: React.FC = () => {
         dueDate: formDueDate || '2026-10-31',
         submissionGuide: formSubmissionGuide,
         kejuruanId: assignedKj.id,
-        kejuruanName: assignedKj.name
+        kejuruanName: assignedKj.subPrograms?.includes(formKejuruanName) ? formKejuruanName : assignedKj.name
       });
       showToast('Misi kejuruan berhasil diperbarui!');
     } else {
@@ -250,7 +267,7 @@ export const MissionManagementView: React.FC = () => {
           dueDate: formDueDate || '2026-10-31',
           submissionGuide: formSubmissionGuide,
           kejuruanId: assignedKj.id,
-          kejuruanName: assignedKj.name,
+          kejuruanName: assignedKj.subPrograms?.includes(formKejuruanName) ? formKejuruanName : assignedKj.name,
           mentorId: currentUser.id,
           mentorName: currentUser.name,
           status: 'active'
@@ -391,7 +408,7 @@ export const MissionManagementView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           {/* Action Button for Mentor / Admin */}
-          {(isMentor || isAdmin) && (
+          {isMentor && (
             <button
               onClick={handleOpenCreateModal}
               className="px-4 py-2 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
@@ -482,11 +499,9 @@ export const MissionManagementView: React.FC = () => {
               onChange={e => setSelectedKejuruanFilter(e.target.value)}
               className="text-xs py-1.5 px-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none"
             >
-              {(isAdmin || mentorKejuruanIds.length > 1) && <option value="all">Semua Program Kejuruan</option>}
-              {kejuruanList.filter(k => !isMentor || mentorKejuruanIds.includes(k.id)).map(k => (
-                <option key={k.id} value={k.id}>
-                  {k.code} - {k.name}
-                </option>
+              {(isAdmin || mentorKejuruanIds.length > 1 || mentorHasSubPrograms) && <option value="all">Semua Program Kejuruan</option>}
+              {getKejuruanFilterOptions(kejuruanList).filter(option => !isMentor || mentorKejuruanIds.includes(option.programId)).map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
           )}
@@ -826,7 +841,11 @@ export const MissionManagementView: React.FC = () => {
                 </label>
                 <select
                   value={formKejuruanId}
-                  onChange={e => setFormKejuruanId(e.target.value)}
+                  onChange={e => {
+                    const selected = kejuruanList.find(program => program.id === e.target.value);
+                    setFormKejuruanId(e.target.value);
+                    setFormKejuruanName(selected?.subPrograms?.[0] || selected?.name || '');
+                  }}
                   className="w-full text-xs p-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none focus:ring-1 focus:ring-[#4C83B5]"
                 >
                   {kejuruanList.map(kj => (
@@ -836,6 +855,18 @@ export const MissionManagementView: React.FC = () => {
                   ))}
                 </select>
               </div>}
+              {selectedFormKejuruan?.subPrograms?.length ? (
+                <div>
+                  <label className="block text-xs font-semibold text-[#123B59] mb-1">Kejuruan Smart Creative</label>
+                  <select
+                    value={formKejuruanName}
+                    onChange={e => setFormKejuruanName(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none focus:ring-1 focus:ring-[#4C83B5]"
+                  >
+                    {selectedFormKejuruan.subPrograms.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
+                </div>
+              ) : null}
 
               <div>
                 <label className="block text-xs font-semibold text-[#123B59] mb-1">

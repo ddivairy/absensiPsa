@@ -93,7 +93,7 @@ export const MentorDashboard: React.FC = () => {
   const mentorKejuruan = useMemo(() => {
     const firstProgram = kejuruanList.find(k => k.id === mentorKejuruanIds[0]) || kejuruanList[0];
     if (mentorKejuruanIds.length < 2 || !firstProgram) return firstProgram;
-    return { ...firstProgram, id: 'smart-creative', name: 'Smart Creative', code: 'SC' };
+    return { ...firstProgram, id: 'smart-creative', name: 'Smart Creative', code: 'SC-04' };
   }, [kejuruanList, mentorKejuruanIds]);
 
   // Mentor's own today attendance record (verified by Admin)

@@ -19,6 +19,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { getTodayDateString, INDONESIAN_MONTHS } from '../../utils/dateUtils';
+import { getKejuruanFilterOptions, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ export const DailyReportView: React.FC = () => {
       .filter(r => {
         if (isMentor && currentUser.kejuruanId && r.kejuruanId !== currentUser.kejuruanId) return false;
         if (filterStatus !== 'all' && r.status !== filterStatus) return false;
-        if (filterKejuruan !== 'all' && r.kejuruanId !== filterKejuruan) return false;
+        if (!matchesKejuruanFilter(filterKejuruan, kejuruanList, r.kejuruanId, r.kejuruanName)) return false;
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
           if (
@@ -148,7 +149,7 @@ export const DailyReportView: React.FC = () => {
         return true;
       })
       .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
-  }, [dailyReports, isMentor, currentUser.kejuruanId, filterStatus, filterKejuruan, searchQuery]);
+  }, [dailyReports, isMentor, currentUser.kejuruanId, filterStatus, filterKejuruan, searchQuery, kejuruanList]);
 
   const pendingCount = useMemo(
     () =>
@@ -511,8 +512,8 @@ export const DailyReportView: React.FC = () => {
             className="text-xs py-1.5 px-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none"
           >
             <option value="all">Semua Kejuruan</option>
-            {kejuruanList.map(k => (
-              <option key={k.id} value={k.id}>{k.code} - {k.name}</option>
+            {getKejuruanFilterOptions(kejuruanList).map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         )}
@@ -533,13 +534,13 @@ export const DailyReportView: React.FC = () => {
                 <th className="py-3 px-3">Deskripsi Kegiatan</th>
                 <th className="py-3 px-3 text-center">Foto</th>
                 <th className="py-3 px-3">Status</th>
-                <th className="py-3 px-4 text-right">Aksi</th>
+                {isAdmin ? null : <th className="py-3 px-4 text-right">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E4EAF0]">
               {relevantReports.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-[#A9C7DE] text-xs">
+                  <td colSpan={isAdmin ? 5 : 6} className="py-12 text-center text-[#A9C7DE] text-xs">
                     Tidak ada laporan yang sesuai filter.
                   </td>
                 </tr>
@@ -596,14 +597,16 @@ export const DailyReportView: React.FC = () => {
                       <StatusBadge status={report.status} />
                     </td>
 
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleOpenReview(report)}
-                        className="px-3 py-1.5 rounded-lg border border-[#E4EAF0] bg-white hover:bg-[#EAF2F8] hover:border-[#4C83B5] text-xs font-semibold text-[#123B59] transition cursor-pointer"
-                      >
-                        {report.status === 'pending' ? 'Verifikasi' : 'Ubah Review'}
-                      </button>
-                    </td>
+                    {!isAdmin && (
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => handleOpenReview(report)}
+                          className="px-3 py-1.5 rounded-lg border border-[#E4EAF0] bg-white hover:bg-[#EAF2F8] hover:border-[#4C83B5] text-xs font-semibold text-[#123B59] transition cursor-pointer"
+                        >
+                          {report.status === 'pending' ? 'Verifikasi' : 'Ubah Review'}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

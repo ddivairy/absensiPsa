@@ -267,6 +267,7 @@ export async function parseUsersFromExcelFile(
           ? kejuruanList.find(k =>
               k.code.toLowerCase() === programValue.toLowerCase() ||
               k.name.toLowerCase() === programValue.toLowerCase() ||
+              k.subPrograms?.some(name => name.toLowerCase() === programValue.toLowerCase()) ||
               programValue.toLowerCase().startsWith(`${k.code.toLowerCase()} -`) ||
               programValue.toLowerCase().startsWith(`${k.code.toLowerCase()} :`)
             )
@@ -294,7 +295,9 @@ export async function parseUsersFromExcelFile(
           nim: rawIdentifier,
           role: finalRole,
           kejuruanId: programValue ? (targetKj?.id || importedKejuruanId(programValue)) : undefined,
-          kejuruanName: programValue ? (targetKj?.name || programValue) : undefined,
+          kejuruanName: programValue
+            ? (targetKj?.subPrograms?.find(name => name.toLowerCase() === programValue.toLowerCase()) || targetKj?.name || programValue)
+            : undefined,
           loginCode: rawCode,
           password: rawPass,
           email: `${rawIdentifier}@hadirku.id`,

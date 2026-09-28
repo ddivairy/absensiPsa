@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { getKejuruanFilterOptions, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
 import { User, MissionSubmission } from '../../types';
 import {
   Trophy,
@@ -121,7 +122,7 @@ export const HallOfFameView: React.FC = () => {
   // Filtered rankings
   const filteredRankings = useMemo(() => {
     return rankings.filter(r => {
-      if (selectedKejuruanFilter !== 'all' && r.user.kejuruanId !== selectedKejuruanFilter) {
+      if (!matchesKejuruanFilter(selectedKejuruanFilter, kejuruanList, r.user.kejuruanId, r.user.kejuruanName)) {
         return false;
       }
       if (searchQuery) {
@@ -133,7 +134,7 @@ export const HallOfFameView: React.FC = () => {
       }
       return true;
     });
-  }, [rankings, selectedKejuruanFilter, searchQuery]);
+  }, [rankings, selectedKejuruanFilter, searchQuery, kejuruanList]);
 
   // Current logged in trainee's standing
   const myRanking = useMemo(() => {
@@ -325,10 +326,8 @@ export const HallOfFameView: React.FC = () => {
             className="text-xs py-1.5 px-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none max-w-xs"
           >
             <option value="all">Semua Program Kejuruan</option>
-            {kejuruanList.map(k => (
-              <option key={k.id} value={k.id}>
-                {k.code} - {k.name}
-              </option>
+            {getKejuruanFilterOptions(kejuruanList).map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </div>

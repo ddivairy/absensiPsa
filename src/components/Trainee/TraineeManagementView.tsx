@@ -73,6 +73,7 @@ export const TraineeManagementView: React.FC = () => {
   const [newUserName, setNewUserName] = useState('');
   const [newUserNim, setNewUserNim] = useState('');
   const [newUserKejuruanId, setNewUserKejuruanId] = useState(kejuruanList[0]?.id || '');
+  const [newUserKejuruanName, setNewUserKejuruanName] = useState(kejuruanList[0]?.name || '');
   const [newUserRole, setNewUserRole] = useState<'trainee' | 'mentor'>('trainee');
   const [newUserPassword, setNewUserPassword] = useState(generateDefaultPassword());
 
@@ -168,6 +169,7 @@ export const TraineeManagementView: React.FC = () => {
     setNewUserPassword(generateDefaultPassword());
     setNewUserName('');
     setNewUserKejuruanId(kejuruanList[0]?.id || '');
+    setNewUserKejuruanName(kejuruanList[0]?.name || '');
     setIsAddUserModalOpen(true);
   };
 
@@ -199,7 +201,7 @@ export const TraineeManagementView: React.FC = () => {
       role: newUserRole,
       nim: newUserNim,
       kejuruanId: newUserKejuruanId,
-      kejuruanName: kj?.name || '',
+      kejuruanName: kj?.subPrograms?.includes(newUserKejuruanName) ? newUserKejuruanName : kj?.name || '',
       phone: '',
       loginCode: newUserNim,
       password: newUserPassword,
@@ -724,7 +726,11 @@ export const TraineeManagementView: React.FC = () => {
                 <label className="block text-[#123B59] font-bold mb-1">Program Kejuruan</label>
                 <select
                   value={newUserKejuruanId}
-                  onChange={e => setNewUserKejuruanId(e.target.value)}
+                  onChange={e => {
+                    const selected = kejuruanList.find(program => program.id === e.target.value);
+                    setNewUserKejuruanId(e.target.value);
+                    setNewUserKejuruanName(selected?.subPrograms?.[0] || selected?.name || '');
+                  }}
                   className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-semibold"
                 >
                   {kejuruanList.map(k => (
@@ -733,6 +739,17 @@ export const TraineeManagementView: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {kejuruanList.find(program => program.id === newUserKejuruanId)?.subPrograms?.length ? (
+                  <select
+                    value={newUserKejuruanName}
+                    onChange={e => setNewUserKejuruanName(e.target.value)}
+                    className="mt-2 w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-semibold"
+                  >
+                    {kejuruanList.find(program => program.id === newUserKejuruanId)?.subPrograms?.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                ) : null}
               </div>
 
               {/* 8-Digit Login Code & Password generation box */}

@@ -18,6 +18,7 @@ import {
 } from '../data/mockData';
 import { getTodayDateString, getCurrentTimeWIB } from '../utils/dateUtils';
 import { generate8DigitLoginCode, generateDefaultPassword } from '../utils/userExcelUtils';
+import { canonicalizeKejuruanCatalog } from '../utils/kejuruanCodes';
 import confetti from 'canvas-confetti';
 import { api } from '../services/api';
 
@@ -276,7 +277,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const data = await api.getAppData();
         if (!active) return;
-        setKejuruanList(data.kejuruanList.length ? data.kejuruanList : INITIAL_KEJURUAN);
+        const loadedKejuruanList = data.kejuruanList.length ? data.kejuruanList : INITIAL_KEJURUAN;
+        setKejuruanList(canonicalizeKejuruanCatalog(loadedKejuruanList));
         setAttendanceRecords(previous => {
           if (attendanceRevisionRef.current === attendanceRevisionAtLoad) return data.attendanceRecords;
           const merged = new Map(data.attendanceRecords.map(record => [record.id, record]));
@@ -853,7 +855,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const fresh = await api.getUsers();
       if (fresh.success) setUsers(fresh.users);
       const appData = await api.getAppData();
-      if (appData.success) setKejuruanList(appData.kejuruanList);
+      if (appData.success) setKejuruanList(canonicalizeKejuruanCatalog(appData.kejuruanList));
       return { success: true, count: res.count, message: res.message };
     } catch (err: any) {
       console.warn('API batchImportUsers failed:', err);
@@ -1094,7 +1096,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isAuthenticated || !jwtToken) return;
     setAppDataReady(false);
     api.getAppData().then(data => {
-      setKejuruanList(data.kejuruanList);
+      setKejuruanList(canonicalizeKejuruanCatalog(data.kejuruanList));
       setAttendanceRecords(data.attendanceRecords);
       setLeaveRequests(data.leaveRequests);
       setMissions(data.missions);

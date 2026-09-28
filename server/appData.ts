@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { getPool } from './db';
 import { authenticateToken, AuthenticatedRequest } from './auth';
+import { canonicalKejuruanCode } from './kejuruanCodes';
 
 export const appDataRouter = Router();
 
@@ -27,7 +28,7 @@ const mapLeave = (r: any) => ({
   reviewedBy: r.reviewed_by || undefined, reviewedAt: dateTimeText(r.reviewed_at), reviewNotes: r.review_notes || undefined,
 });
 const mapKejuruan = (r: any) => ({
-  id: r.id, name: r.name, code: r.code, category: r.category, color: r.color,
+  id: r.id, name: r.name, code: canonicalKejuruanCode(r.name, r.code), category: r.category, color: r.color,
   description: r.description || '', mentorId: r.mentor_id || undefined, mentorName: r.mentor_name || undefined,
 });
 const mapMission = (r: any) => ({
@@ -386,7 +387,7 @@ appDataRouter.put('/', authenticateToken, async (req: AuthenticatedRequest, res:
     const upsert = async (sql: string, params: any[]) => connection.query(sql, params);
     for (const r of lists.kejuruanList) await upsert(
       `INSERT INTO kejuruan (id,name,code,category,color,description,mentor_id,mentor_name) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),code=VALUES(code),category=VALUES(category),color=VALUES(color),description=VALUES(description),mentor_id=VALUES(mentor_id),mentor_name=VALUES(mentor_name)`,
-      [r.id,r.name,r.code,r.category,r.color,r.description || '',r.mentorId || null,r.mentorName || null]);
+      [r.id,r.name,canonicalKejuruanCode(r.name, r.code),r.category,r.color,r.description || '',r.mentorId || null,r.mentorName || null]);
 
     for (const r of lists.attendanceRecords) {
       if (user.role === 'trainee' && !own(r)) continue;

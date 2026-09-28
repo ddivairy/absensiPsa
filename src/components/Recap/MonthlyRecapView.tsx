@@ -18,6 +18,7 @@ import {
 import { INDONESIAN_MONTHS, getTodayDateString } from '../../utils/dateUtils';
 import { computeMonthlyRecapData, exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { getMentorKejuruanIds } from '../../utils/mentorKejuruan';
+import { getKejuruanFilterOptions } from '../../utils/kejuruanCodes';
 
 export const MonthlyRecapView: React.FC = () => {
   const { users, kejuruanList, attendanceRecords, currentUser, dailyReports, setActiveTab } = useApp();
@@ -25,6 +26,7 @@ export const MonthlyRecapView: React.FC = () => {
   const isTrainee = currentUser.role === 'trainee';
   const isMentor = currentUser.role === 'mentor';
   const mentorKejuruanIds = getMentorKejuruanIds(currentUser, kejuruanList);
+  const kejuruanFilterOptions = getKejuruanFilterOptions(kejuruanList);
   const isDzikri = isMentor && /dzikri/i.test(currentUser.name);
 
   const today = getTodayDateString();
@@ -319,12 +321,10 @@ export const MonthlyRecapView: React.FC = () => {
               className="text-xs py-2 px-3 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5] max-w-xs"
             >
               {(currentUser.role === 'admin' || isDzikri) && <option value="all">{isDzikri ? 'Semua Program Smart Creative' : 'Semua Program Kejuruan'}</option>}
-              {kejuruanList
-                .filter(k => currentUser.role === 'admin' || mentorKejuruanIds.includes(k.id))
-                .map(k => (
-                  <option key={k.id} value={k.id}>
-                    {k.code} - {k.name}
-                  </option>
+              {kejuruanFilterOptions
+                .filter(option => currentUser.role === 'admin' || mentorKejuruanIds.includes(option.programId))
+                .map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
             </select>
           ) : (

@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { getPool, initDatabase, DbUser } from './db';
 import { appDataRouter } from './appData';
+import { canonicalKejuruanCode } from './kejuruanCodes';
 import bcrypt from 'bcryptjs';
 import {
   generateToken,
@@ -465,8 +466,8 @@ app.post(
             await connection.query(
               `INSERT INTO kejuruan (id,name,code,category,color,description)
                VALUES (?,?,?,'Lainnya','#4C83B5','Program ditambahkan melalui impor akun.')
-               ON DUPLICATE KEY UPDATE name=VALUES(name)`,
-              [kejuruanId, kejuruanName, `IMP-${programHash}`]
+               ON DUPLICATE KEY UPDATE name=VALUES(name),code=VALUES(code)`,
+              [kejuruanId, kejuruanName, canonicalKejuruanCode(kejuruanName, `IMP-${programHash}`)]
             );
           }
           if (role === 'admin') adminCount++;
@@ -745,7 +746,7 @@ const mentorCanManageProgram = (req: AuthenticatedRequest, kejuruanId: string, k
   if (req.user?.role !== 'mentor') return req.user?.role === 'admin';
   const mentorName = (req.user.name || '').toLowerCase();
   const programName = kejuruanName.toLowerCase();
-  if (mentorName.includes('dzikri')) return programName.includes('generative ai') || programName.includes('konten visual untuk sosial media') || programName.includes('optimalisasi pemasaran melalui media sosial');
+  if (mentorName.includes('dzikri')) return programName === 'smart creative' || programName.includes('generative ai') || programName.includes('konten visual untuk sosial media') || programName.includes('optimalisasi pemasaran melalui media sosial');
   if (mentorName.includes('ayu') || mentorName.includes('vanesha')) return programName.includes('sistem informasi pariwisata');
   if (mentorName.includes('fadil')) return programName.includes('node.js') || programName.includes('react');
   if (mentorName.includes('davy')) return programName.includes('integrasi bangunan cerdas');
