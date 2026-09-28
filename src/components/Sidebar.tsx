@@ -14,10 +14,15 @@ import {
   Target,
   MapPin,
   Clock,
-  BookOpen
+  BookOpen,
+  Sun,
+  Moon,
+  Monitor,
+  Check
 } from 'lucide-react';
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS, getTodayDateString } from '../utils/dateUtils';
 import psaLogo from '../assets/2D PSA LOGO.png';
+import { ThemePreference, useTheme } from '../context/ThemeContext';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -38,6 +43,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     dailyReports,
     logout
   } = useApp();
+  const { preference, resolvedTheme, setPreference } = useTheme();
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDateString, setCurrentDateString] = useState<string>('');
 
@@ -143,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const sidebarInner = (
     <div className="flex flex-col h-full bg-[#123B59] text-white p-5 select-none w-[240px] overflow-y-auto sidebar-inner">
       {/* Brand Header */}
-      <div className="flex items-center justify-between px-1">
+      <div className="relative flex items-start px-1">
         <button
           type="button"
           onClick={() =>
@@ -155,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'dashboard'
             )
           }
-          className="brand-lockup flex items-center gap-2.5 text-left hover:opacity-90 transition cursor-pointer group"
+          className="brand-lockup flex max-w-[calc(100%-42px)] items-center gap-2.5 text-left hover:opacity-90 transition cursor-pointer group"
           title="Ke Halaman Utama"
         >
           <img src={psaLogo} alt="Logo PSA" className="sidebar-logo" />
@@ -165,14 +172,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </button>
 
-        {/* Close button for mobile drawer */}
-        <button
-          onClick={onCloseMobile}
-          className="lg:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
-          aria-label="Tutup Menu"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="absolute right-0 top-0 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setThemeMenuOpen(open => !open)}
+            className="rounded-lg p-2 text-white/75 transition hover:bg-white/10 hover:text-white cursor-pointer"
+            aria-label="Atur tema tampilan"
+            aria-expanded={themeMenuOpen}
+            title="Pengaturan tema"
+          >
+            {resolvedTheme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </button>
+
+          {/* Close button for mobile drawer */}
+          <button
+            onClick={onCloseMobile}
+            className="lg:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+            aria-label="Tutup Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {themeMenuOpen && (
+          <div className="theme-menu absolute z-50 w-52 rounded-xl border border-white/15 bg-[#0D2F47] p-1.5 shadow-2xl">
+            <p className="px-2.5 pb-1.5 pt-1 text-[9px] font-bold tracking-[.12em] text-[#A9C7DE]">TEMA TAMPILAN</p>
+            {([
+              ['light', 'Terang', Sun],
+              ['dark', 'Gelap', Moon],
+              ['system', 'Ikuti Sistem', Monitor]
+            ] as const).map(([value, label, Icon]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  setPreference(value as ThemePreference);
+                  setThemeMenuOpen(false);
+                }}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition cursor-pointer ${
+                  preference === value ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0 text-[#A9C7DE]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-bold">{label}</span>
+                </span>
+                {preference === value && <Check className="h-3.5 w-3.5 shrink-0 text-[#A9C7DE]" />}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* User Section / Card */}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { AdminDashboard } from './components/Dashboard/AdminDashboard';
 import { MentorDashboard } from './components/Dashboard/MentorDashboard';
@@ -271,8 +272,10 @@ const MainLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainLayout />
-    </AppProvider>
+    <ThemeProvider>
+      <AppProvider>
+        <MainLayout />
+      </AppProvider>
+    </ThemeProvider>
   );
 }
