@@ -194,7 +194,6 @@ const MainLayout: React.FC = () => {
         {/* Footer */}
         <footer className="mt-10 pt-4 border-t border-[#E4EAF0] text-xs text-[#6F7F8D] flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Punya Skill Akademi &copy; 2026 Sistem Presensi Magang & Vokasi</span>
-          <span>Verifikasi Bertingkat: Admin &rarr; Mentor &rarr; Peserta</span>
         </footer>
       </div>
 

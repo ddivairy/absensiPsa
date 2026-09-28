@@ -17,7 +17,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS, getTodayDateString } from '../utils/dateUtils';
-import punyaSkillLogo from '../assets/Logo PSA.jpeg';
+import psaLogo from '../assets/2D PSA LOGO.png';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -155,17 +155,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'dashboard'
             )
           }
-          className="flex min-w-0 items-center gap-3 text-left hover:opacity-90 transition cursor-pointer group"
+          className="brand-lockup flex items-center gap-2.5 text-left hover:opacity-90 transition cursor-pointer group"
           title="Ke Halaman Utama"
         >
-          <span className="sidebar-logo-frame">
-            <img src={punyaSkillLogo} alt="Punya Skill" className="sidebar-logo" />
-          </span>
-          <span className="min-w-0 leading-none">
-            <span className="block text-lg font-extrabold tracking-[.08em] text-white">PSA</span>
-            <span className="mt-1 block truncate text-[10px] font-semibold tracking-[.04em] text-[#A9C7DE]">
-              Punya Skill Academy
-            </span>
+          <img src={psaLogo} alt="Logo PSA" className="sidebar-logo" />
+          <span className="brand-copy">
+            <strong>PSA</strong>
+            <small>Punya Skill Akademi</small>
           </span>
         </button>
 

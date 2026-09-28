@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import punyaSkillLogo from '../../assets/Logo PSA.jpeg';
+import psaLogo from '../../assets/2D PSA LOGO.png';
 import {
   KeyRound,
   Eye,
@@ -52,19 +52,11 @@ export const LoginView: React.FC = () => {
       <div className="w-full max-w-md space-y-5">
         {/* App Branding */}
         <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-3 rounded-2xl bg-[#123B59] px-5 py-4 shadow-lg shadow-[#123B59]/15">
-            <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/35 bg-white shadow-md">
-              <img
-                src={punyaSkillLogo}
-                alt="Logo PSA Punya Skill Academy"
-                className="h-full w-full object-cover object-left"
-              />
-            </span>
-            <div className="text-left">
-              <div className="text-2xl font-extrabold tracking-[.08em] text-white">PSA &ndash;</div>
-              <div className="text-sm font-semibold tracking-[.04em] text-[#A9C7DE]">
-                Punya Skill Academy
-              </div>
+          <div className="login-brand-lockup flex items-center justify-center gap-3.5 rounded-2xl bg-[#123B59] px-5 py-4 shadow-lg shadow-[#123B59]/15">
+            <img src={psaLogo} alt="Logo PSA" className="login-brand-logo" />
+            <div className="login-brand-copy text-left">
+              <div>PSA</div>
+              <p>Punya Skill Akademi</p>
             </div>
           </div>
           <p className="text-[10px] font-bold tracking-[.16em] text-[#4C83B5] uppercase pt-1">

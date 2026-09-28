@@ -160,23 +160,64 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* ── Brand ───────────────────────────────────────────────────────────────── */
 .sidebar-logo {
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: left center;
-  transform: scale(1.04);
+  width: 52px;
+  height: 56px;
+  flex: none;
+  object-fit: contain;
 }
 
-.sidebar-logo-frame {
-  display: block;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
+.brand-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.brand-copy strong {
+  color: #ffffff;
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.brand-copy small {
+  margin-top: 5px;
+  color: #a9c7de;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .055em;
+  white-space: nowrap;
+}
+
+.login-brand-logo {
+  width: 68px;
+  height: 72px;
+  flex: none;
+  object-fit: contain;
+}
+
+.login-brand-copy > div {
+  color: #ffffff;
+  font-size: 31px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  line-height: .95;
+}
+
+.login-brand-copy p {
+  margin: 7px 0 0;
+  color: #a9c7de;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .035em;
+  line-height: 1.2;
+}
+
+@media (max-width: 380px) {
+  .login-brand-lockup { gap: 10px; padding-inline: 16px; }
+  .login-brand-logo { width: 59px; height: 63px; }
+  .login-brand-copy > div { font-size: 27px; }
+  .login-brand-copy p { font-size: 12px; }
 }
 
 /* ── Custom Scrollbar ────────────────────────────────────────────────────── */
