@@ -24,6 +24,14 @@ function readEightDigitValue(value: unknown): string {
   return value == null ? '' : String(value).trim();
 }
 
+function importedKejuruanId(programName: string): string {
+  let hash = 2166136261;
+  for (const char of programName.trim().toLowerCase()) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  }
+  return `kj-import-${(hash >>> 0).toString(36)}`;
+}
+
 /**
  * Export Trainees, Mentors, or All Users to Excel format (.xlsx)
  */
@@ -119,7 +127,9 @@ export async function parseUsersFromExcelFile(
       // Detect sheet-level role from sheet name
       const sheetLower = sheetName.toLowerCase();
       let sheetRole: Role | null = null;
-      if (
+      if (sheetLower.includes('admin') || sheetLower.includes('administrator')) {
+        sheetRole = 'admin';
+      } else if (
         sheetLower.includes('mentor') ||
         sheetLower.includes('instruktur') ||
         sheetLower.includes('guru') ||
@@ -208,10 +218,13 @@ export async function parseUsersFromExcelFile(
           // Auto detection mode
           if (roleIdx !== -1 && row[roleIdx]) {
             const rVal = String(row[roleIdx]).trim().toLowerCase();
+            const adminKeywords = ['admin', 'administrator'];
             const mentorKeywords = ['mentor', 'instruktur', 'guru', 'pengajar', 'pembimbing', 'dosen', 'trainer', 'fasilitator', 'pendamping', 'mnt'];
             const traineeKeywords = ['trainee', 'peserta', 'siswa', 'murid', 'mahasiswa', 'magang', 'pelajar', 'trn'];
 
-            if (mentorKeywords.some(k => rVal.includes(k))) {
+            if (adminKeywords.some(k => rVal.includes(k))) {
+              finalRole = 'admin';
+            } else if (mentorKeywords.some(k => rVal.includes(k))) {
               finalRole = 'mentor';
             } else if (traineeKeywords.some(k => rVal.includes(k))) {
               finalRole = 'trainee';
@@ -258,19 +271,12 @@ export async function parseUsersFromExcelFile(
               programValue.toLowerCase().startsWith(`${k.code.toLowerCase()} :`)
             )
           : undefined;
-        if (!programValue) {
+        if (!programValue && finalRole !== 'admin') {
           return {
             success: false,
             error: `Program Kejuruan pada baris ${r + 1} kosong. Isi nama program sesuai data Excel.`,
           };
         }
-        const programSlug = programValue
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '') || 'program';
-
         // NIM and login code use the same eight-digit account identifier.
         const rawCode = rawIdentifier;
 
@@ -287,8 +293,8 @@ export async function parseUsersFromExcelFile(
           name: rawName,
           nim: rawIdentifier,
           role: finalRole,
-          kejuruanId: targetKj?.id || `kj-import-${programSlug}`,
-          kejuruanName: targetKj?.name || programValue,
+          kejuruanId: programValue ? (targetKj?.id || importedKejuruanId(programValue)) : undefined,
+          kejuruanName: programValue ? (targetKj?.name || programValue) : undefined,
           loginCode: rawCode,
           password: rawPass,
           email: `${rawIdentifier}@hadirku.id`,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { AdminDashboard } from './components/Dashboard/AdminDashboard';
 import { MentorDashboard } from './components/Dashboard/MentorDashboard';
@@ -25,7 +26,7 @@ import {
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS } from './utils/dateUtils';
 
 const MainLayout: React.FC = () => {
-  const { currentUser, activeTab, setActiveTab, isAuthenticated } = useApp();
+  const { currentUser, activeTab, setActiveTab, isAuthenticated, authReady } = useApp();
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [liveClock, setLiveClock] = useState('00.00.00');
@@ -48,6 +49,17 @@ const MainLayout: React.FC = () => {
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFB] text-[#123B59]">
+        <div className="flex items-center gap-3 rounded-2xl border border-[#E4EAF0] bg-white px-5 py-4 shadow-sm">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#4C83B5] border-t-transparent" />
+          <span className="text-sm font-semibold">Memeriksa sesi login...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginView />;
@@ -74,7 +86,7 @@ const MainLayout: React.FC = () => {
         return <TraineeDashboard />;
 
       case 'misi':
-        return currentUser.role === 'admin' ? <AdminDashboard /> : <MissionManagementView />;
+        return <MissionManagementView />;
 
       case 'laporan-harian':
         return <DailyReportView />;
@@ -145,7 +157,7 @@ const MainLayout: React.FC = () => {
                 PRESENSI MAGANG HARIAN
               </p>
               <h1 className="mt-1 font-bold text-2xl lg:text-3xl text-[#123B59] tracking-tight">
-                Selamat datang kembali
+                Selamat datang, {currentUser.name}
               </h1>
               <p className="mt-0.5 text-sm text-[#6F7F8D]">{headerDate}</p>
             </div>
@@ -177,7 +189,6 @@ const MainLayout: React.FC = () => {
         {/* Footer */}
         <footer className="mt-10 pt-4 border-t border-[#E4EAF0] text-xs text-[#6F7F8D] flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Punya Skill Akademi &copy; 2026 Sistem Presensi Magang & Vokasi</span>
-          <span>Verifikasi Bertingkat: Admin &rarr; Mentor &rarr; Peserta</span>
         </footer>
       </div>
 
@@ -255,8 +266,10 @@ const MainLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainLayout />
-    </AppProvider>
+    <ThemeProvider>
+      <AppProvider>
+        <MainLayout />
+      </AppProvider>
+    </ThemeProvider>
   );
 }

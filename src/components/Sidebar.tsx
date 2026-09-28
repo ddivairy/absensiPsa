@@ -14,10 +14,16 @@ import {
   Target,
   MapPin,
   Clock,
-  BookOpen
+  BookOpen,
+  Sun,
+  Moon,
+  Monitor,
+  Check
 } from 'lucide-react';
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS, getTodayDateString } from '../utils/dateUtils';
 import { getMentorKejuruanIds } from '../utils/mentorKejuruan';
+import psaLogo from '../assets/2D PSA LOGO.png';
+import { ThemePreference, useTheme } from '../context/ThemeContext';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -39,6 +45,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     dailyReports,
     logout
   } = useApp();
+  const { preference, resolvedTheme, setPreference } = useTheme();
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDateString, setCurrentDateString] = useState<string>('');
 
@@ -109,6 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return [
         { id: 'verifikasi-mentor', label: 'Verifikasi Mentor', icon: CheckCircle2, badge: pendingMentorVerifications },
         { id: 'laporan-harian', label: 'Laporan Harian', icon: BookOpen, badge: pendingDailyReportsCount },
+        { id: 'misi', label: 'Misi & Tugas Kejuruan', icon: Target, badge: pendingMissionsCount },
         { id: 'hall-of-fame', label: 'Hall of Fame Mentor', icon: Trophy },
         { id: 'rekap', label: 'Rekapitulasi Presensi', icon: FileSpreadsheet },
         { id: 'peserta', label: 'Peserta & Kejuruan', icon: Users },
@@ -144,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const sidebarInner = (
     <div className="flex flex-col h-full bg-[#123B59] text-white p-5 select-none w-[240px] overflow-y-auto sidebar-inner">
       {/* Brand Header */}
-      <div className="flex items-center justify-between px-1">
+      <div className="relative flex items-start px-1">
         <button
           type="button"
           onClick={() =>
@@ -156,36 +165,67 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'dashboard'
             )
           }
-          className="flex items-center gap-3 text-left hover:opacity-90 transition cursor-pointer group"
+          className="brand-lockup flex max-w-[calc(100%-42px)] items-center gap-2.5 text-left hover:opacity-90 transition cursor-pointer group"
           title="Ke Halaman Utama"
         >
-          {/* Logo Shield SVG from style.html */}
-          <svg className="logo-shield" viewBox="0 0 50 58" aria-label="Emblem Punya Skill Akademi" role="img">
-            <path d="M4 3h42v32c0 10-9 16-21 21C13 51 4 45 4 35V3Z" fill="#fff" />
-            <path d="M6 5h38v29c0 9-8 14-19 19C14 48 6 43 6 34V5Z" fill="#0D2F47" />
-            <path d="M10 29h30v5c-3 7-8 10-15 14-7-4-12-7-15-14v-5Z" fill="#fff" />
-            <path d="M16 15c4-3 7 1 9 3 2-2 5-6 9-3v8c-3-2-6-2-9 0-3-2-6-2-9 0v-8Z" fill="#fff" />
-            <path d="M15 38c3 0 4 4 6 4 2 0 2-7 4-7s2 7 4 7c2 0 3-4 6-4" fill="none" stroke="#0D2F47" strokeWidth="2" />
-          </svg>
-          <div>
-            <div className="brand-punya text-white">PSA</div>
-            <div className="brand-skill">Punya Skill Akademi</div>
+          <img src={psaLogo} alt="Logo PSA" className="sidebar-logo" />
+          <span className="brand-copy">
+            <strong>PSA</strong>
+            <small>Punya Skill Akademi</small>
+          </span>
+        </button>
+
+        <div className="absolute right-0 top-0 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setThemeMenuOpen(open => !open)}
+            className="rounded-lg p-2 text-white/75 transition hover:bg-white/10 hover:text-white cursor-pointer"
+            aria-label="Atur tema tampilan"
+            aria-expanded={themeMenuOpen}
+            title="Pengaturan tema"
+          >
+            {resolvedTheme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </button>
+
+          {/* Close button for mobile drawer */}
+          <button
+            onClick={onCloseMobile}
+            className="lg:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+            aria-label="Tutup Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {themeMenuOpen && (
+          <div className="theme-menu absolute z-50 w-52 rounded-xl border border-white/15 bg-[#0D2F47] p-1.5 shadow-2xl">
+            <p className="px-2.5 pb-1.5 pt-1 text-[9px] font-bold tracking-[.12em] text-[#A9C7DE]">TEMA TAMPILAN</p>
+            {([
+              ['light', 'Terang', Sun],
+              ['dark', 'Gelap', Moon],
+              ['system', 'Ikuti Sistem', Monitor]
+            ] as const).map(([value, label, Icon]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  setPreference(value as ThemePreference);
+                  setThemeMenuOpen(false);
+                }}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition cursor-pointer ${
+                  preference === value ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0 text-[#A9C7DE]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-bold">{label}</span>
+                </span>
+                {preference === value && <Check className="h-3.5 w-3.5 shrink-0 text-[#A9C7DE]" />}
+              </button>
+            ))}
           </div>
-        </button>
-
-        {/* Close button for mobile drawer */}
-        <button
-          onClick={onCloseMobile}
-          className="lg:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
-          aria-label="Tutup Menu"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        )}
       </div>
-
-      <p className="mt-4 px-1 text-[10px] font-bold tracking-[.16em] text-[#A9C7DE]">
-        PRESENSI MAGANG HARIAN
-      </p>
 
       {/* User Section / Card */}
       <section className="mt-4 rounded-2xl border border-white/10 bg-white/[.07] p-3.5">
@@ -261,17 +301,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* Tip Banner from style.html */}
-      <div className="mt-4 rounded-xl border border-white/10 bg-[#0D2F47] p-3.5">
-        <div className="flex gap-2.5">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#A9C7DE]" />
-          <div>
-            <p className="text-xs font-bold text-white">Presensi lebih mudah</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-[#A9C7DE]">
-              Pastikan lokasi aktif sebelum melakukan check-in atau check-out.
-            </p>
+      {currentUser.role !== 'admin' && (
+        <div className="mt-4 rounded-xl border border-white/10 bg-[#0D2F47] p-3.5">
+          <div className="flex gap-2.5">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#A9C7DE]" />
+            <div>
+              <p className="text-xs font-bold text-white">Presensi lebih mudah</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[#A9C7DE]">
+                Pastikan lokasi aktif sebelum melakukan check-in atau check-out.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Logout Footer */}
       <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-white/60">

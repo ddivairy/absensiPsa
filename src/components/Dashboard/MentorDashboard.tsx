@@ -177,62 +177,6 @@ export const MentorDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E4EAF0]">
-        <div>
-          <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase">
-            INSTRUKTUR & MENTOR KEJURUAN
-          </p>
-          <div className="flex items-center gap-2 mt-1">
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#123B59]">
-              Kelas {mentorKejuruan.name}
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF2F8] text-[#28618F]">
-              Instruktur Mentor
-            </span>
-          </div>
-          <p className="text-xs text-[#6F7F8D] mt-1">
-            {formatIndonesianDate(today)} &middot; Kode: <strong className="text-[#123B59]">{mentorKejuruan.code}</strong> &middot; Instruktur: {currentUser.name}
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('misi')}
-            className="px-3.5 py-2.5 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-          >
-            <Target className="w-3.5 h-3.5 text-[#A9C7DE]" />
-            <span>Misi Kejuruan</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('hall-of-fame')}
-            className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            <span>Hall of Fame</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleExportClassExcel}
-            className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Excel Kelas</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleExportClassPDF}
-            className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <FileText className="w-3.5 h-3.5 text-[#D95B83]" />
-            <span>PDF Kelas</span>
-          </button>
-        </div>
-      </div>
-
       {/* SECTION 1: PRESENSI MANDIRI MENTOR (Diverifikasi oleh Admin) */}
       <section className="surface soft-hover rounded-2xl p-5 border border-[#E4EAF0] space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E4EAF0] pb-3">

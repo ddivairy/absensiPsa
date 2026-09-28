@@ -46,6 +46,7 @@ export const TraineeDashboard: React.FC = () => {
   const monthName = INDONESIAN_MONTHS[currentMonth - 1];
 
   const [liveTime, setLiveTime] = useState<string>('');
+  const [dailyNote, setDailyNote] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -131,7 +132,7 @@ export const TraineeDashboard: React.FC = () => {
         const coordinates = { lat: position.coords.latitude, lng: position.coords.longitude };
         const result = isCheckedIn
           ? clockOut(undefined, coordinates)
-          : clockIn(undefined, undefined, coordinates, workMode);
+          : clockIn(dailyNote, undefined, coordinates, workMode);
         setIsLocating(false);
         showToast(result.message);
       },
@@ -235,56 +236,6 @@ export const TraineeDashboard: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Quick Action Navigation Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#E4EAF0]">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-[#123B59] uppercase tracking-wider">
-            Kejuruan:
-          </span>
-          <span className="rounded-full bg-[#EAF2F8] text-[#28618F] px-3 py-1 text-xs font-bold">
-            {currentUser.kejuruanName || 'Kejuruan Vokasi'}
-          </span>
-          <span className="text-xs text-[#6F7F8D]">
-            &middot; Mentor: <strong className="text-[#123B59]">{mentorName}</strong>
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('misi')}
-            className="px-3 py-2 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <Target className="w-3.5 h-3.5 text-[#A9C7DE]" />
-            <span>Misi Kejuruan</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('hall-of-fame')}
-            className="px-3 py-2 rounded-xl border border-[#E4EAF0] bg-white hover:bg-[#F8FAFB] text-[#123B59] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            <span>Hall of Fame</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('izin')}
-            className="px-3 py-2 rounded-xl border border-[#E4EAF0] bg-white hover:bg-[#F8FAFB] text-[#123B59] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <CalendarClock className="w-3.5 h-3.5 text-[#4C83B5]" />
-            <span>Ajukan Izin</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadMyReport}
-            className="px-3 py-2 rounded-xl border border-[#E4EAF0] bg-white hover:bg-[#F8FAFB] text-[#123B59] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <FileText className="w-3.5 h-3.5 text-[#6F7F8D]" />
-            <span>Slip PDF</span>
-          </button>
-        </div>
-      </div>
 
       {/* 1. Summary Cards (Matching style.html) */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -430,6 +381,22 @@ export const TraineeDashboard: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            {!isCheckedIn && !todayLeave && (
+              <div className="mt-4">
+                <label htmlFor="attendance-daily-note" className="text-xs font-bold text-[#123B59]">
+                  Catatan / Agenda Pelatihan Hari Ini (Opsional)
+                </label>
+                <input
+                  id="attendance-daily-note"
+                  type="text"
+                  value={dailyNote}
+                  onChange={event => setDailyNote(event.target.value)}
+                  placeholder="Contoh: Praktik modul kejuruan, instalasi server..."
+                  className="mt-1.5 w-full rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] px-3.5 py-2.5 text-xs text-[#123B59] focus:border-[#4C83B5] focus:outline-none"
+                />
+              </div>
+            )}
 
           </div>
 

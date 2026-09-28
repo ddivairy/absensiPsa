@@ -1,6 +1,8 @@
-import { LeaveRequest, Mission, User } from '../types';
+import {
+  User, Kejuruan, AttendanceRecord, LeaveRequest, AttendanceSettings,
+  Mission, MissionSubmission, DailyReport
+} from '../types';
 
-const TOKEN_KEY = 'hadirku_jwt_token';
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 
 export interface LoginResponse {
@@ -24,18 +26,32 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+export interface AppDataSnapshot {
+  kejuruanList: Kejuruan[];
+  attendanceRecords: AttendanceRecord[];
+  leaveRequests: LeaveRequest[];
+  settings: AttendanceSettings | null;
+  missions: Mission[];
+  missionSubmissions: MissionSubmission[];
+  dailyReports: DailyReport[];
+}
+
 export const api = {
-  // Token management
   getToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+    try {
+      return window.sessionStorage.getItem('hadirku_session_token');
+    } catch {
+      return null;
+    }
   },
 
-  setToken(token: string) {
-    localStorage.setItem(TOKEN_KEY, token);
-  },
-
-  clearToken() {
-    localStorage.removeItem(TOKEN_KEY);
+  setToken(token: string | null): void {
+    try {
+      if (token) window.sessionStorage.setItem('hadirku_session_token', token);
+      else window.sessionStorage.removeItem('hadirku_session_token');
+    } catch {
+      // The HttpOnly cookie remains the primary session mechanism.
+    }
   },
 
   // Helper for authenticated fetch
@@ -43,16 +59,14 @@ export const api = {
     const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...((options.headers as Record<string, string>) || {}),
     };
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
+      credentials: 'include',
     });
 
     const data = await response.json().catch(() => ({}));
@@ -80,17 +94,38 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-
-    if (res.token) {
-      this.setToken(res.token);
-    }
-
+    if (res.token) this.setToken(res.token);
     return res;
+  },
+
+  async logoutSession(): Promise<void> {
+    try {
+      await this.request('/api/auth/logout', { method: 'POST' });
+    } finally {
+      this.setToken(null);
+    }
   },
 
   // Get current authenticated user profile via JWT
   async getMe(): Promise<MeResponse> {
     return this.request<MeResponse>('/api/auth/me');
+  },
+
+  async getAppData(): Promise<{ success: boolean } & AppDataSnapshot> {
+    return this.request<{ success: boolean } & AppDataSnapshot>('/api/app-data');
+  },
+
+  async saveAppData(data: AppDataSnapshot): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/api/app-data', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteAppData(collection: string, id: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/api/app-data/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   },
 
   // Get all users from TiDB (Admin / Mentor only)
