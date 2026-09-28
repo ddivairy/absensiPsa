@@ -261,9 +261,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+        <div className="mt-3 flex flex-col items-start gap-1.5 border-t border-white/10 pt-3">
           <span className="text-[9px] font-bold tracking-[.13em] text-[#A9C7DE]">PERAN AKTIF</span>
-          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white">
+          <span className="inline-flex whitespace-nowrap rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white">
             {roleLabel}
           </span>
         </div>

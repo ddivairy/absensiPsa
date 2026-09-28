@@ -118,6 +118,11 @@ const MainLayout: React.FC = () => {
       ? 'Mentor'
       : 'Peserta';
 
+  // Keep the welcome/date banner on attendance and mentor verification pages.
+  // Other pages already have their own title and should not repeat the greeting.
+  const showAttendanceHeader =
+    activeTab === 'dashboard' || activeTab === 'presensi' || activeTab === 'verifikasi-mentor';
+
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-[#123B59] flex flex-col font-sans">
       {/* Sidebar Navigation (Fixed on desktop, drawer on mobile) */}
@@ -129,7 +134,13 @@ const MainLayout: React.FC = () => {
       {/* Main Workspace Area (padded on left for fixed sidebar) */}
       <div className="flex-1 w-full lg:pl-[280px] p-4 sm:p-5 lg:p-6 pb-24 lg:pb-8 flex flex-col">
         {/* Top Header matching style.html */}
-        <header className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+        <header
+          className={`flex w-full flex-col justify-between gap-4 lg:flex-row lg:items-center ${
+            showAttendanceHeader
+              ? 'mb-6'
+              : 'relative z-10 mb-0 h-0 overflow-visible lg:mb-0 lg:h-0'
+          }`}
+        >
           <div className="flex items-center justify-between lg:block">
             {/* Mobile Brand with Hamburger */}
             <div className="lg:hidden flex items-center gap-2.5">
@@ -151,21 +162,27 @@ const MainLayout: React.FC = () => {
               </div>
             </div>
 
-            {/* Desktop / Global Title */}
-            <div>
-              <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5]">
-                PRESENSI MAGANG HARIAN
-              </p>
-              <h1 className="mt-1 font-bold text-2xl lg:text-3xl text-[#123B59] tracking-tight">
-                Selamat datang, {currentUser.name}
-              </h1>
-              <p className="mt-0.5 text-sm text-[#6F7F8D]">{headerDate}</p>
-            </div>
+            {/* Attendance title and greeting; detail pages use their own page heading. */}
+            {showAttendanceHeader && (
+              <div>
+                <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5]">
+                  PRESENSI MAGANG HARIAN
+                </p>
+                <h1 className="mt-1 font-bold text-2xl lg:text-3xl text-[#123B59] tracking-tight">
+                  Selamat datang, {currentUser.name}
+                </h1>
+                <p className="mt-0.5 text-sm text-[#6F7F8D]">{headerDate}</p>
+              </div>
+            )}
 
           </div>
 
           {/* Current time and authenticated role */}
-          <div className="surface flex items-center gap-3 rounded-2xl px-3.5 py-2.5">
+          <div
+            className={`surface flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ${
+              showAttendanceHeader ? '' : 'lg:absolute lg:right-0 lg:top-0'
+            }`}
+          >
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF2F8] text-[#4C83B5]">
               <Clock className="h-4 w-4" />
             </span>

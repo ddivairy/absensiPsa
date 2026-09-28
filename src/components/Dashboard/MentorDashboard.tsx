@@ -453,7 +453,7 @@ export const MentorDashboard: React.FC = () => {
                           {record.status}
                         </span>
                       ) : (
-                        <span className="rounded-full px-2.5 py-1 text-[10px] font-bold bg-[#F4F6F8] text-[#6F7F8D]">
+                        <span className="inline-flex whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-bold bg-[#F4F6F8] text-[#6F7F8D]">
                           Belum Absen
                         </span>
                       )}

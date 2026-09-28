@@ -28,6 +28,26 @@ import { formatIndonesianDate, getTodayDateString } from '../../utils/dateUtils'
 import { getMentorKejuruanIds } from '../../utils/mentorKejuruan';
 import { getKejuruanFilterOptions, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
 
+const formatSubmissionDateTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const dateLabel = new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Asia/Jakarta',
+  }).format(date);
+  const timeLabel = new Intl.DateTimeFormat('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'Asia/Jakarta',
+  }).format(date);
+
+  return `${dateLabel}, ${timeLabel} WIB`;
+};
+
 export const MissionManagementView: React.FC = () => {
   const {
     currentUser,
@@ -745,7 +765,9 @@ export const MissionManagementView: React.FC = () => {
                           <div className="font-medium text-[#123B59] max-w-[200px] truncate">
                             {sub.missionTitle}
                           </div>
-                          <div className="text-[10px] text-[#A9C7DE]">{sub.submittedAt}</div>
+                          <div className="text-[10px] text-[#A9C7DE]">
+                            Dikirim {formatSubmissionDateTime(sub.submittedAt)}
+                          </div>
                         </td>
 
                         <td className="py-3 px-3">
