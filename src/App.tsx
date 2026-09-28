@@ -9,6 +9,7 @@ import { MonthlyRecapView } from './components/Recap/MonthlyRecapView';
 import { LeaveManagementView } from './components/Leave/LeaveManagementView';
 import { TraineeManagementView } from './components/Trainee/TraineeManagementView';
 import { SettingsView } from './components/Settings/SettingsView';
+import { ProfileView } from './components/Profile/ProfileView';
 import { LoginView } from './components/Auth/LoginView';
 import { MissionManagementView } from './components/Missions/MissionManagementView';
 import { HallOfFameView } from './components/HallOfFame/HallOfFameView';
@@ -105,6 +106,9 @@ const MainLayout: React.FC = () => {
 
       case 'pengaturan':
         return <SettingsView />;
+
+      case 'profil':
+        return <ProfileView />;
 
       default:
         return <AdminDashboard />;

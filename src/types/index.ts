@@ -20,7 +20,6 @@ export interface User {
   id: string;
   nim: string; // Nomor Induk Siswa / NIP Mentor / Admin
   name: string;
-  email: string;
   role: Role;
   avatar: string;
   phone: string;

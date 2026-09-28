@@ -5,6 +5,7 @@ import { getPool, initDatabase, DbUser } from './db';
 import { appDataRouter } from './appData';
 import { canonicalKejuruanCode } from './kejuruanCodes';
 import bcrypt from 'bcryptjs';
+import { uploadToCloudinary, isCloudinaryConfigured } from './cloudinary';
 import {
   generateToken,
   authenticateToken,
@@ -40,6 +41,60 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN || true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use('/api/app-data', appDataRouter);
 
+app.post('/api/upload', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { image, folder = 'hadirku' } = req.body || {};
+
+    if (!image || typeof image !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Gambar tidak ditemukan untuk diupload.',
+      });
+    }
+
+    if (!isCloudinaryConfigured) {
+      return res.status(500).json({
+        success: false,
+        message: 'Cloudinary belum dikonfigurasi di server. Hubungi admin untuk menyiapkan variabel environment.',
+      });
+    }
+
+    const uploadResult = await uploadToCloudinary(String(image), String(folder));
+
+    return res.json({
+      success: true,
+      url: uploadResult.url,
+      publicId: uploadResult.publicId,
+      message: 'Gambar berhasil diupload ke Cloudinary.',
+    });
+  } catch (error: any) {
+    console.error('[Cloudinary Upload Error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal mengupload gambar ke Cloudinary.',
+      error: error.message,
+    });
+  }
+});
+
+// Allow every authenticated user to change only their own profile photo.
+app.put('/api/profile/avatar', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { avatar } = req.body || {};
+    if (typeof avatar !== 'string' || !avatar.trim()) {
+      return res.status(400).json({ success: false, message: 'Foto profil tidak valid.' });
+    }
+    const pool = getPool();
+    const [result] = await pool.query<any>('UPDATE users SET avatar = ? WHERE id = ?', [avatar, req.user!.id]);
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+    }
+    return res.json({ success: true, message: 'Foto profil berhasil diperbarui.' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Gagal menyimpan foto profil.', error: error.message });
+  }
+});
+
 // 1. Health check & DB status
 app.get('/api/health', async (_req, res) => {
   try {
@@ -62,6 +117,74 @@ app.get('/api/health', async (_req, res) => {
 
 // 2. Login Endpoint (Supports all 3 roles: admin, mentor, trainee)
 // Accepts either { code, password } or { identifier, password }
+app.post('/api/auth/change-password', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    const trimmedCurrent = String(currentPassword ?? '').trim();
+    const trimmedNew = String(newPassword ?? '').trim();
+
+    if (!trimmedCurrent || !trimmedNew) {
+      return res.status(400).json({
+        success: false,
+        message: 'Kata sandi lama dan kata sandi baru wajib diisi.',
+      });
+    }
+
+    if (!/^\d{8}$/.test(trimmedNew)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Kata sandi baru harus berupa 8 digit angka.',
+      });
+    }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Sesi login tidak valid.',
+      });
+    }
+
+    const pool = getPool();
+    const [rows] = await pool.query<any[]>(
+      'SELECT password_hash FROM users WHERE id = ? LIMIT 1',
+      [userId]
+    );
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pengguna tidak ditemukan.',
+      });
+    }
+
+    const isMatch = await comparePassword(trimmedCurrent, rows[0].password_hash);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Kata sandi lama tidak sesuai.',
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const newHash = await bcrypt.hash(trimmedNew, salt);
+
+    await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, userId]);
+
+    return res.json({
+      success: true,
+      message: 'Kata sandi berhasil diperbarui.',
+    });
+  } catch (error: any) {
+    console.error('[Change Password Error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal memperbarui kata sandi. Silakan coba lagi.',
+      error: error.message,
+    });
+  }
+});
+
 app.post('/api/auth/login', async (req, res: Response) => {
   try {
     const { code, identifier, password } = req.body;
@@ -70,30 +193,29 @@ app.post('/api/auth/login', async (req, res: Response) => {
     if (!searchKey) {
       return res.status(400).json({
         success: false,
-        message: 'Silakan masukkan Kode Login 8-digit, NIM, atau Email Anda.',
+        message: 'Silakan masukkan Kode Login 8-digit atau NIM Anda.',
       });
     }
 
     const pool = getPool();
-    // Query user by login_code, email, or nim from TiDB
+    // Query user by login_code or nim from TiDB
     const [rows] = await pool.query<any[]>(
       `SELECT * FROM users 
-       WHERE login_code = ? OR LOWER(email) = LOWER(?) OR LOWER(nim) = LOWER(?) 
+       WHERE login_code = ? OR LOWER(nim) = LOWER(?)
        LIMIT 1`,
-      [searchKey, searchKey, searchKey]
+      [searchKey, searchKey]
     );
 
     if (!rows || rows.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Akun dengan kode/email/NIM tersebut tidak ditemukan.',
+        message: 'Akun dengan kode login atau NIM tersebut tidak ditemukan.',
       });
     }
 
     const user: DbUser = rows[0];
 
-    // Admin masuk hanya dengan login_code numerik 8 digit; email dan NIM
-    // tetap hanya dapat dipakai untuk role mentor/peserta.
+    // Admin masuk hanya dengan login_code numerik 8 digit.
     if (user.role === 'admin' && !/^\d{8}$/.test(searchKey)) {
       return res.status(401).json({
         success: false,
@@ -130,7 +252,6 @@ app.post('/api/auth/login', async (req, res: Response) => {
       id: user.id,
       nim: user.nim,
       name: user.name,
-      email: user.email,
       role: user.role,
       kejuruanId: user.kejuruan_id,
       kejuruanName: user.kejuruan_name,
@@ -142,7 +263,6 @@ app.post('/api/auth/login', async (req, res: Response) => {
       id: user.id,
       nim: user.nim,
       name: user.name,
-      email: user.email,
       role: user.role,
       avatar: user.avatar,
       phone: user.phone,
@@ -186,7 +306,7 @@ app.get('/api/auth/me', authenticateToken, async (req: AuthenticatedRequest, res
     const pool = getPool();
 
     const [rows] = await pool.query<any[]>(
-      `SELECT id, nim, name, email, role, avatar, phone, kejuruan_id, kejuruan_name,
+      `SELECT id, nim, name, role, avatar, phone, kejuruan_id, kejuruan_name,
               status, joined_date, login_code 
        FROM users WHERE id = ? LIMIT 1`,
       [userId]
@@ -204,7 +324,6 @@ app.get('/api/auth/me', authenticateToken, async (req: AuthenticatedRequest, res
       id: row.id,
       nim: row.nim,
       name: row.name,
-      email: row.email,
       role: row.role as Role,
       avatar: row.avatar,
       phone: row.phone,
@@ -238,7 +357,7 @@ app.get(
     try {
       const pool = getPool();
       let query = `
-        SELECT id, nim, name, email, role, avatar, phone, kejuruan_id, kejuruan_name,
+        SELECT id, nim, name, role, avatar, phone, kejuruan_id, kejuruan_name,
                status, joined_date, login_code 
         FROM users ORDER BY role ASC, name ASC
       `;
@@ -248,7 +367,6 @@ app.get(
         id: r.id,
         nim: r.nim,
         name: r.name,
-        email: r.email,
         role: r.role,
         avatar: r.avatar,
         phone: r.phone,
@@ -280,7 +398,6 @@ app.post(
       const {
         name,
         nim,
-        email,
         role,
         avatar,
         phone,
@@ -291,10 +408,10 @@ app.post(
         password,
       } = req.body;
 
-      if (!name || !nim || !email || !role) {
+      if (!name || !nim || !role) {
         return res.status(400).json({
           success: false,
-          message: 'Nama, NIM, Email, dan Role wajib diisi.',
+          message: 'Nama, NIM, dan Role wajib diisi.',
         });
       }
 
@@ -317,21 +434,20 @@ app.post(
 
       const pool = getPool();
 
-      // Check if email, nim, or loginCode already exists
+      // Check if NIM or login code already exists
       const [dupes] = await pool.query<any[]>(
-        'SELECT id, email, nim, login_code FROM users WHERE email = ? OR nim = ? OR login_code = ? LIMIT 1',
-        [email.trim(), nim.trim(), code]
+        'SELECT id, nim, login_code FROM users WHERE nim = ? OR login_code = ? LIMIT 1',
+        [nim.trim(), code]
       );
 
       if (dupes && dupes.length > 0) {
         const found = dupes[0];
         let field = 'Data';
-        if (found.email.toLowerCase() === email.trim().toLowerCase()) field = 'Email';
-        else if (found.nim.toLowerCase() === nim.trim().toLowerCase()) field = 'NIM';
+        if (found.nim.toLowerCase() === nim.trim().toLowerCase()) field = 'NIM';
         else if (found.login_code === code) field = 'Kode login';
         return res.status(409).json({
           success: false,
-          message: `${field} "${found.email || found.nim || code}" sudah terdaftar di sistem.`,
+          message: `${field} "${found.nim || code}" sudah terdaftar di sistem.`,
         });
       }
 
@@ -349,7 +465,7 @@ app.post(
           id,
           nim.trim(),
           name.trim(),
-          email.trim(),
+          `${code}@internal.hadirku.id`,
           role,
           avatar || null,
           phone || null,
@@ -366,7 +482,6 @@ app.post(
         id,
         nim: nim.trim(),
         name: name.trim(),
-        email: email.trim(),
         role,
         avatar: avatar || '',
         phone: phone || '',
@@ -421,19 +536,16 @@ app.post(
       }
 
       const seenIdentifiers = new Set<string>();
-      const seenEmails = new Set<string>();
       const duplicateIndex = users.findIndex((item: any) => {
         const code = String(item.loginCode || item.nim).trim();
-        const email = String(item.email || `${code}@hadirku.id`).trim().toLowerCase();
-        if (seenIdentifiers.has(code) || seenEmails.has(email)) return true;
+        if (seenIdentifiers.has(code)) return true;
         seenIdentifiers.add(code);
-        seenEmails.add(email);
         return false;
       });
       if (duplicateIndex !== -1) {
         return res.status(400).json({
           success: false,
-          message: `Kode login atau email duplikat pada baris ${duplicateIndex + 1}. Setiap akun harus memakai kode dan email unik.`,
+          message: `Kode login atau NIM duplikat pada baris ${duplicateIndex + 1}. Setiap akun harus memakai kode login yang unik.`,
         });
       }
 
@@ -456,7 +568,7 @@ app.post(
           const role = item.role as Role;
           const code = String(item.loginCode || item.nim).trim();
           const nim = code;
-          const email = item.email?.trim() || `${code}@hadirku.id`;
+          const internalEmail = `${code}@internal.hadirku.id`;
           const rawPassword = String(item.password).trim();
           const kejuruanName = String(item.kejuruanName || '').trim();
           let kejuruanId = String(item.kejuruanId || '').trim();
@@ -475,8 +587,8 @@ app.post(
           else traineeCount++;
 
           const [existing] = await connection.query<any[]>(
-            'SELECT id, role FROM users WHERE email = ? OR nim = ? OR login_code = ? LIMIT 2',
-            [email, nim, code]
+            'SELECT id, role FROM users WHERE nim = ? OR login_code = ? LIMIT 2',
+            [nim, code]
           );
           if (existing.some(user => user.role === 'admin')) {
             throw Object.assign(new Error(`Baris ${rowIndex + 1} memakai kredensial akun administrator.`), { code: 'IMPORT_ADMIN_COLLISION', rowIndex });
@@ -491,14 +603,13 @@ app.post(
           if (existing.length > 0) {
             await connection.query(
             `UPDATE users SET
-              nim = ?, name = ?, email = ?, role = ?, avatar = ?, phone = ?,
+              nim = ?, name = ?, role = ?, avatar = ?, phone = ?,
               kejuruan_id = ?, kejuruan_name = ?, status = ?, joined_date = ?,
               login_code = ?, password_hash = ?
              WHERE id = ?`,
             [
               nim,
               item.name.trim(),
-              email,
               role,
               item.avatar || null,
               item.phone || null,
@@ -524,7 +635,7 @@ app.post(
               id,
               nim,
               item.name.trim(),
-              email,
+              internalEmail,
               role,
               item.avatar || null,
               item.phone || null,
@@ -541,7 +652,6 @@ app.post(
             id,
             nim,
             name: item.name.trim(),
-            email,
             role,
             kejuruanId: item.kejuruanId || null,
             kejuruanName: item.kejuruanName || null,
@@ -558,10 +668,10 @@ app.post(
         await connection.rollback();
         const rowNumber = Number.isInteger(error.rowIndex) ? error.rowIndex + 1 : undefined;
         const message = error.code === 'ER_DUP_ENTRY'
-          ? `Impor gagal pada baris ${rowNumber || '?'}: kode login, NIM, atau email sudah digunakan akun lain.`
+          ? `Impor gagal pada baris ${rowNumber || '?'}: kode login atau NIM sudah digunakan akun lain.`
           : error.code?.startsWith('IMPORT_')
           ? error.message
-          : `Gagal mengimpor data ke TiDB${rowNumber ? ` pada baris ${rowNumber}` : ''}. Periksa panjang data dan pastikan kode/email tidak duplikat.`;
+          : `Gagal mengimpor data ke TiDB${rowNumber ? ` pada baris ${rowNumber}` : ''}. Periksa panjang data dan pastikan kode login atau NIM tidak duplikat.`;
         console.error('[Batch Import Error]', { code: error.code, row: rowNumber, message: error.message });
         return res.status(400).json({ success: false, message, errorCode: error.code || 'BATCH_IMPORT_FAILED' });
       } finally {
@@ -584,15 +694,26 @@ app.post(
   }
 );
 
-// 8. Update User (Admin only)
+// 8. Update User (Admins can manage accounts; users can update their own avatar)
 app.put(
   '/api/users/:id',
   authenticateToken,
-  authorizeRoles('admin'),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;
-      const { name, nim, email, phone, kejuruanId, kejuruanName, status, loginCode, password } = req.body;
+      const { name, nim, phone, avatar, kejuruanId, kejuruanName, status, loginCode, password } = req.body;
+
+      const isAdmin = req.user?.role === 'admin';
+      const isSelfAvatarUpdate = req.user?.id === id &&
+        Object.keys(req.body || {}).length === 1 &&
+        Object.prototype.hasOwnProperty.call(req.body || {}, 'avatar');
+
+      if (!isAdmin && !isSelfAvatarUpdate) {
+        return res.status(403).json({
+          success: false,
+          message: 'Anda hanya dapat mengubah foto profil akun sendiri.',
+        });
+      }
 
       const pool = getPool();
       const [existing] = await pool.query<any[]>('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
@@ -600,12 +721,17 @@ app.put(
         return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
       }
 
+      if (!isAdmin) {
+        await pool.query('UPDATE users SET avatar = ? WHERE id = ?', [avatar ?? null, id]);
+        return res.json({ success: true, message: 'Foto profil berhasil diperbarui.' });
+      }
+
       let passwordClause = '';
       const params: any[] = [
         name !== undefined ? name : existing[0].name,
         nim !== undefined ? nim : existing[0].nim,
-        email !== undefined ? email : existing[0].email,
         phone !== undefined ? phone : existing[0].phone,
+        avatar !== undefined ? avatar : existing[0].avatar,
         kejuruanId !== undefined ? kejuruanId : existing[0].kejuruan_id,
         kejuruanName !== undefined ? kejuruanName : existing[0].kejuruan_name,
         status !== undefined ? status : existing[0].status,
@@ -623,7 +749,7 @@ app.put(
 
       await pool.query(
         `UPDATE users SET
-          name = ?, nim = ?, email = ?, phone = ?, kejuruan_id = ?,
+          name = ?, nim = ?, phone = ?, avatar = ?, kejuruan_id = ?,
           kejuruan_name = ?, status = ?, login_code = ? ${passwordClause}
          WHERE id = ?`,
         params

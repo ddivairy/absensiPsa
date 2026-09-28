@@ -14,7 +14,6 @@ export interface UserTokenPayload {
   id: string;
   nim: string;
   name: string;
-  email: string;
   role: Role;
   kejuruanId?: string | null;
   kejuruanName?: string | null;
