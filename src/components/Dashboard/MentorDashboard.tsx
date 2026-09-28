@@ -18,6 +18,7 @@ import {
 import { getTodayDateString, formatIndonesianDate, getCurrentTimeWIB } from '../../utils/dateUtils';
 import { AttendanceStatus } from '../../types';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { getMentorKejuruanIds } from '../../utils/mentorKejuruan';
 
 export const MentorDashboard: React.FC = () => {
   const {
@@ -42,9 +43,15 @@ export const MentorDashboard: React.FC = () => {
   const [mentorNote, setMentorNote] = useState<string>('');
 
   // Mentor's assigned kejuruan
+  const mentorKejuruanIds = useMemo(
+    () => getMentorKejuruanIds(currentUser, kejuruanList),
+    [currentUser, kejuruanList]
+  );
   const mentorKejuruan = useMemo(() => {
-    return kejuruanList.find(k => k.id === currentUser.kejuruanId) || kejuruanList[0];
-  }, [kejuruanList, currentUser.kejuruanId]);
+    const firstProgram = kejuruanList.find(k => k.id === mentorKejuruanIds[0]) || kejuruanList[0];
+    if (mentorKejuruanIds.length < 2 || !firstProgram) return firstProgram;
+    return { ...firstProgram, id: 'smart-creative', name: 'Smart Creative', code: 'SC' };
+  }, [kejuruanList, mentorKejuruanIds]);
 
   // Mentor's own today attendance record (verified by Admin)
   const myMentorRecord = getTodayRecordForUser(currentUser.id);
@@ -53,13 +60,13 @@ export const MentorDashboard: React.FC = () => {
 
   // Trainees in this mentor's class
   const classTrainees = useMemo(() => {
-    return users.filter(u => u.role === 'trainee' && u.kejuruanId === mentorKejuruan.id);
-  }, [users, mentorKejuruan.id]);
+    return users.filter(u => u.role === 'trainee' && mentorKejuruanIds.includes(u.kejuruanId || ''));
+  }, [users, mentorKejuruanIds]);
 
   // Trainee today records for this class
   const classTodayRecords = useMemo(() => {
-    return attendanceRecords.filter(r => r.date === today && r.kejuruanId === mentorKejuruan.id && r.userRole !== 'mentor');
-  }, [attendanceRecords, today, mentorKejuruan.id]);
+    return attendanceRecords.filter(r => r.date === today && mentorKejuruanIds.includes(r.kejuruanId) && r.userRole !== 'mentor');
+  }, [attendanceRecords, today, mentorKejuruanIds]);
 
   // Class stats
   const stats = useMemo(() => {

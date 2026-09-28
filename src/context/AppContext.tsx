@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   User,
   Kejuruan,
@@ -61,7 +61,8 @@ interface AppContextType {
     reviewNotes?: string
   ) => Promise<{ success: boolean; message: string }>;
   // Missions & Points system
-  addMission: (missionData: Omit<Mission, 'id' | 'createdAt'>) => void;
+  refreshMissions: () => Promise<void>;
+  addMission: (missionData: Omit<Mission, 'id' | 'createdAt'>) => Promise<void>;
   updateMission: (id: string, updates: Partial<Mission>) => void;
   deleteMission: (id: string) => void;
   submitMissionWork: (submissionData: {
@@ -329,6 +330,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('hadirku_missions_v1', JSON.stringify(missions));
   }, [missions]);
+
+  useEffect(() => {
+    if (!jwtToken) return;
+    let isMounted = true;
+    const syncMissions = async () => {
+      try {
+        let res = await api.getMissions();
+        if (!res.success) return;
+
+        const activeUser = users.find(user => user.id === currentUserId);
+        if (activeUser?.role === 'mentor') {
+          const locallySaved: Mission[] = JSON.parse(localStorage.getItem('hadirku_missions_v1') || '[]');
+          const remoteIds = new Set(res.missions.map(mission => mission.id));
+          const unsynced = locallySaved.filter(mission =>
+            mission.mentorId === currentUserId && !remoteIds.has(mission.id)
+          );
+          for (const mission of unsynced) {
+            try {
+              await api.createMission(mission);
+            } catch (error) {
+              console.warn('Could not migrate a locally saved mission to TiDB:', error);
+            }
+          }
+          if (unsynced.length) res = await api.getMissions();
+        }
+
+        if (isMounted && res.success) setMissions(res.missions);
+      } catch (error) {
+        console.warn('Could not fetch missions from TiDB:', error);
+      }
+    };
+    syncMissions();
+    return () => { isMounted = false; };
+  }, [jwtToken, currentUserId, users]);
 
   useEffect(() => {
     localStorage.setItem('hadirku_submissions_v1', JSON.stringify(missionSubmissions));
@@ -982,22 +1017,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Missions & Submissions Actions
-  const addMission = (missionData: Omit<Mission, 'id' | 'createdAt'>) => {
-    const id = `msn-${Date.now()}`;
+  const refreshMissions = useCallback(async () => {
+    if (!jwtToken) return;
+    try {
+      const res = await api.getMissions();
+      if (res.success) setMissions(res.missions);
+    } catch (error) {
+      console.warn('Could not refresh missions from TiDB:', error);
+    }
+  }, [jwtToken]);
+
+  const addMission = async (missionData: Omit<Mission, 'id' | 'createdAt'>) => {
+    const id = `msn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const newMission: Mission = {
       id,
       ...missionData,
       createdAt: getTodayDateString()
     };
+    if (jwtToken) {
+      await api.createMission(newMission);
+    }
     setMissions(prev => [newMission, ...prev]);
   };
 
   const updateMission = (id: string, updates: Partial<Mission>) => {
     setMissions(prev => prev.map(m => (m.id === id ? { ...m, ...updates } : m)));
+    if (jwtToken) {
+      api.updateMission(id, updates).catch(error => console.error('Could not update mission in TiDB:', error));
+    }
   };
 
   const deleteMission = (id: string) => {
     setMissions(prev => prev.filter(m => m.id !== id));
+    if (jwtToken) {
+      api.deleteMission(id).catch(error => console.error('Could not delete mission from TiDB:', error));
+    }
   };
 
   const submitMissionWork = (data: {
@@ -1221,6 +1275,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clockIn,
         clockOut,
         getTodayRecordForUser,
+        refreshMissions,
         submitLeaveRequest,
         reviewLeaveRequest,
         verifyAttendance,

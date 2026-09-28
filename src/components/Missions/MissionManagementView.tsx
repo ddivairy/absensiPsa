@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Mission, MissionDifficulty, MissionSubmission } from '../../types';
 import {
@@ -25,6 +25,7 @@ import {
   Flame
 } from 'lucide-react';
 import { formatIndonesianDate, getTodayDateString } from '../../utils/dateUtils';
+import { getMentorKejuruanIds } from '../../utils/mentorKejuruan';
 
 export const MissionManagementView: React.FC = () => {
   const {
@@ -38,19 +39,30 @@ export const MissionManagementView: React.FC = () => {
     deleteMission,
     submitMissionWork,
     reviewMissionSubmission,
-    getUserPoints
+    getUserPoints,
+    refreshMissions,
+    jwtToken
   } = useApp();
 
   const isMentor = currentUser.role === 'mentor';
   const isAdmin = currentUser.role === 'admin';
   const isTrainee = currentUser.role === 'trainee';
+  const normalizeProgramName = (name?: string) => name?.trim().toLowerCase().replace(/\s+/g, ' ');
+
+  useEffect(() => {
+    if (isTrainee) void refreshMissions();
+  }, [isTrainee, currentUser.id, refreshMissions]);
+  const mentorKejuruanIds = useMemo(
+    () => getMentorKejuruanIds(currentUser, kejuruanList),
+    [currentUser, kejuruanList]
+  );
 
   const [activeTab, setActiveTab] = useState<'missions' | 'submissions'>(
     isMentor ? 'missions' : 'missions'
   );
 
   const [selectedKejuruanFilter, setSelectedKejuruanFilter] = useState<string>(
-    isMentor ? currentUser.kejuruanId || 'all' : isTrainee ? currentUser.kejuruanId || 'all' : 'all'
+    isMentor ? (mentorKejuruanIds.length > 1 ? 'all' : mentorKejuruanIds[0] || 'all') : isTrainee ? currentUser.kejuruanId || 'all' : 'all'
   );
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -66,7 +78,7 @@ export const MissionManagementView: React.FC = () => {
   const [formDueDate, setFormDueDate] = useState('');
   const [formSubmissionGuide, setFormSubmissionGuide] = useState('');
   const [formKejuruanId, setFormKejuruanId] = useState(
-    isMentor ? currentUser.kejuruanId || kejuruanList[0]?.id : kejuruanList[0]?.id
+    isMentor ? mentorKejuruanIds[0] || kejuruanList[0]?.id : kejuruanList[0]?.id
   );
 
   // Modal states for submitting mission work (Trainee)
@@ -92,7 +104,14 @@ export const MissionManagementView: React.FC = () => {
   // Filter missions
   const filteredMissions = useMemo(() => {
     return missions.filter(m => {
-      if (selectedKejuruanFilter !== 'all' && m.kejuruanId !== selectedKejuruanFilter) {
+      if (isMentor && !mentorKejuruanIds.includes(m.kejuruanId)) return false;
+      const selectedProgram = kejuruanList.find(program => program.id === selectedKejuruanFilter);
+      const participantProgramName = isTrainee
+        ? currentUser.kejuruanName || selectedProgram?.name
+        : undefined;
+      const matchesParticipantProgram = isTrainee &&
+        normalizeProgramName(m.kejuruanName) === normalizeProgramName(participantProgramName);
+      if (selectedKejuruanFilter !== 'all' && m.kejuruanId !== selectedKejuruanFilter && !matchesParticipantProgram) {
         return false;
       }
       if (selectedDifficulty !== 'all' && m.difficulty !== selectedDifficulty) {
@@ -107,20 +126,18 @@ export const MissionManagementView: React.FC = () => {
       }
       return true;
     });
-  }, [missions, selectedKejuruanFilter, selectedDifficulty, searchQuery]);
+  }, [missions, isMentor, isTrainee, currentUser.kejuruanName, kejuruanList, mentorKejuruanIds, selectedKejuruanFilter, selectedDifficulty, searchQuery]);
 
   // Submissions filtered for Mentor / Admin
   const relevantSubmissions = useMemo(() => {
     return missionSubmissions.filter(sub => {
-      if (isMentor && currentUser.kejuruanId) {
-        return sub.kejuruanId === currentUser.kejuruanId;
-      }
+      if (isMentor && !mentorKejuruanIds.includes(sub.kejuruanId)) return false;
       if (selectedKejuruanFilter !== 'all' && sub.kejuruanId !== selectedKejuruanFilter) {
         return false;
       }
       return true;
     });
-  }, [missionSubmissions, isMentor, currentUser.kejuruanId, selectedKejuruanFilter]);
+  }, [missionSubmissions, isMentor, mentorKejuruanIds, selectedKejuruanFilter]);
 
   const pendingSubmissionsCount = useMemo(() => {
     return relevantSubmissions.filter(s => s.status === 'pending').length;
@@ -146,7 +163,7 @@ export const MissionManagementView: React.FC = () => {
     setFormCategory('');
     setFormDueDate('');
     setFormSubmissionGuide('Sertakan tautan repositori GitHub / Figma / Google Drive beserta catatan ringkasan pengerjaan.');
-    setFormKejuruanId(isMentor ? currentUser.kejuruanId || kejuruanList[0]?.id : kejuruanList[0]?.id);
+    setFormKejuruanId(isMentor ? mentorKejuruanIds[0] || kejuruanList[0]?.id : kejuruanList[0]?.id);
     setIsModalOpen(true);
   };
 
@@ -164,16 +181,31 @@ export const MissionManagementView: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveMission = (e: React.FormEvent) => {
+  const handleSaveMission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim() || !formDescription.trim()) {
       alert('Judul dan deskripsi misi wajib diisi.');
       return;
     }
 
-    const assignedKj = kejuruanList.find(k => k.id === formKejuruanId) || kejuruanList[0];
+    const existingMission = editingMissionId ? missions.find(m => m.id === editingMissionId) : undefined;
+    const targetKejuruanIds = isMentor
+      ? existingMission ? [existingMission.kejuruanId] : mentorKejuruanIds
+      : [formKejuruanId || kejuruanList[0]?.id].filter((id): id is string => !!id);
+    if (isMentor && targetKejuruanIds.some(id => !mentorKejuruanIds.includes(id))) {
+      alert('Mentor hanya dapat membuat misi untuk kejuruan yang menjadi tanggung jawabnya.');
+      return;
+    }
+    const targetPrograms = targetKejuruanIds
+      .map(id => kejuruanList.find(k => k.id === id))
+      .filter((program): program is NonNullable<typeof program> => !!program);
+    if (!targetPrograms.length) {
+      alert('Program kejuruan target belum tersedia.');
+      return;
+    }
 
     if (editingMissionId) {
+      const assignedKj = targetPrograms[0];
       updateMission(editingMissionId, {
         title: formTitle,
         description: formDescription,
@@ -187,21 +219,30 @@ export const MissionManagementView: React.FC = () => {
       });
       showToast('Misi kejuruan berhasil diperbarui!');
     } else {
-      addMission({
-        title: formTitle,
-        description: formDescription,
-        points: Number(formPoints),
-        difficulty: formDifficulty,
-        category: formCategory || 'Tugas Praktik',
-        dueDate: formDueDate || '2026-10-31',
-        submissionGuide: formSubmissionGuide,
-        kejuruanId: assignedKj.id,
-        kejuruanName: assignedKj.name,
-        mentorId: currentUser.id,
-        mentorName: currentUser.name,
-        status: 'active'
-      });
-      showToast('Misi baru berhasil diterbitkan untuk peserta!');
+      try {
+        for (const assignedKj of targetPrograms) await addMission({
+          title: formTitle,
+          description: formDescription,
+          points: Number(formPoints),
+          difficulty: formDifficulty,
+          category: formCategory || 'Tugas Praktik',
+          dueDate: formDueDate || '2026-10-31',
+          submissionGuide: formSubmissionGuide,
+          kejuruanId: assignedKj.id,
+          kejuruanName: assignedKj.name,
+          mentorId: currentUser.id,
+          mentorName: currentUser.name,
+          status: 'active'
+        });
+      } catch (error) {
+        showToast(error instanceof Error ? `Gagal menyimpan misi: ${error.message}` : 'Gagal menyimpan misi ke server.');
+        return;
+      }
+      showToast(!jwtToken
+        ? 'Misi tersimpan di browser ini saja. Login dengan koneksi server agar peserta dapat melihatnya.'
+        : targetPrograms.length > 1
+        ? `Misi ditambahkan untuk ${targetPrograms.length} kejuruan yang Anda bimbing.`
+        : 'Misi baru berhasil diterbitkan untuk peserta!');
     }
 
     setIsModalOpen(false);
@@ -416,8 +457,8 @@ export const MissionManagementView: React.FC = () => {
               onChange={e => setSelectedKejuruanFilter(e.target.value)}
               className="text-xs py-1.5 px-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none"
             >
-              <option value="all">Semua Program Kejuruan</option>
-              {kejuruanList.map(k => (
+              {(isAdmin || mentorKejuruanIds.length > 1) && <option value="all">Semua Program Kejuruan</option>}
+              {kejuruanList.filter(k => !isMentor || mentorKejuruanIds.includes(k.id)).map(k => (
                 <option key={k.id} value={k.id}>
                   {k.code} - {k.name}
                 </option>
@@ -754,14 +795,13 @@ export const MissionManagementView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveMission} className="p-5 space-y-4">
-              <div>
+              {isAdmin && <div>
                 <label className="block text-xs font-semibold text-[#123B59] mb-1">
                   Program Kejuruan Target
                 </label>
                 <select
                   value={formKejuruanId}
                   onChange={e => setFormKejuruanId(e.target.value)}
-                  disabled={isMentor && !!currentUser.kejuruanId}
                   className="w-full text-xs p-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none focus:ring-1 focus:ring-[#4C83B5]"
                 >
                   {kejuruanList.map(kj => (
@@ -770,7 +810,7 @@ export const MissionManagementView: React.FC = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div>}
 
               <div>
                 <label className="block text-xs font-semibold text-[#123B59] mb-1">

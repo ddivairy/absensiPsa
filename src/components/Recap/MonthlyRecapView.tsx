@@ -17,22 +17,15 @@ import {
 } from 'lucide-react';
 import { INDONESIAN_MONTHS, getTodayDateString } from '../../utils/dateUtils';
 import { computeMonthlyRecapData, exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { getMentorKejuruanIds } from '../../utils/mentorKejuruan';
 
 export const MonthlyRecapView: React.FC = () => {
   const { users, kejuruanList, attendanceRecords, currentUser, dailyReports, setActiveTab } = useApp();
 
   const isTrainee = currentUser.role === 'trainee';
   const isMentor = currentUser.role === 'mentor';
-  const normalizedMentorName = currentUser.name.trim().toLowerCase();
-  const isDzikri = isMentor && /dzikri/.test(normalizedMentorName);
-  const dzikriProgramNames = [
-    'Pengoperasian Tools Generative AI untuk Konten Digital dan Bisnis',
-    'Pembuatan Konten Visual untuk Sosial Media',
-    'Optimalisasi Pemasaran Melalui Media Sosial'
-  ];
-  const mentorKejuruanIds = isDzikri
-    ? kejuruanList.filter(k => dzikriProgramNames.includes(k.name)).map(k => k.id)
-    : isMentor && currentUser.kejuruanId ? [currentUser.kejuruanId] : [];
+  const mentorKejuruanIds = getMentorKejuruanIds(currentUser, kejuruanList);
+  const isDzikri = isMentor && /dzikri/i.test(currentUser.name);
 
   const today = getTodayDateString();
   const [currentYear, currentMonth] = today.split('-').map(Number);

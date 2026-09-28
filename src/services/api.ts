@@ -1,4 +1,4 @@
-import { LeaveRequest, User } from '../types';
+import { LeaveRequest, Mission, User } from '../types';
 
 const TOKEN_KEY = 'hadirku_jwt_token';
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
@@ -156,6 +156,30 @@ export const api = {
     return this.request<{ success: boolean; request: LeaveRequest; message: string }>(`/api/leaves/${encodeURIComponent(id)}/review`, {
       method: 'PATCH',
       body: JSON.stringify({ status, reviewNotes })
+    });
+  },
+
+  async getMissions(): Promise<{ success: boolean; missions: Mission[] }> {
+    return this.request<{ success: boolean; missions: Mission[] }>('/api/missions');
+  },
+
+  async createMission(mission: Mission): Promise<{ success: boolean; mission: Mission }> {
+    return this.request<{ success: boolean; mission: Mission }>('/api/missions', {
+      method: 'POST',
+      body: JSON.stringify(mission),
+    });
+  },
+
+  async updateMission(id: string, updates: Partial<Mission>): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/missions/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+
+  async deleteMission(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/missions/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
     });
   },
 };

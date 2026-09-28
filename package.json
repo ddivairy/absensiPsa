@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "server": "tsx server/index.ts",
-    "dev:all": "concurrently -k -n \"server,client\" -c \"cyan,magenta\" \"tsx server/index.ts\" \"vite --port=3000 --host=0.0.0.0\"",
+    "server": "node --require ./scripts/tsx-userinfo-fallback.cjs ./node_modules/tsx/dist/cli.mjs server/index.ts",
+    "dev:all": "concurrently -k -n \"server,client\" -c \"cyan,magenta\" \"node --require ./scripts/tsx-userinfo-fallback.cjs ./node_modules/tsx/dist/cli.mjs server/index.ts\" \"vite --port=3000 --host=0.0.0.0\"",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",

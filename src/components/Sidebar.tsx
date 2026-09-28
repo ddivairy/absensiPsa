@@ -17,6 +17,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS, getTodayDateString } from '../utils/dateUtils';
+import { getMentorKejuruanIds } from '../utils/mentorKejuruan';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -29,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const {
     currentUser,
+    kejuruanList,
     activeTab,
     setActiveTab,
     leaveRequests,
@@ -61,17 +63,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   const todayStr = getTodayDateString();
+  const mentorKejuruanIds = getMentorKejuruanIds(currentUser, kejuruanList);
 
   // Pending counts
   const pendingLeavesCount = leaveRequests.filter(l => {
     if (currentUser.role === 'admin') return l.status === 'pending';
-    if (currentUser.role === 'mentor') return l.status === 'pending' && l.kejuruanId === currentUser.kejuruanId;
+    if (currentUser.role === 'mentor') return l.status === 'pending' && mentorKejuruanIds.includes(l.kejuruanId);
     return false;
   }).length;
 
   const pendingMissionsCount = missionSubmissions.filter(s => {
     if (currentUser.role === 'admin') return s.status === 'pending';
-    if (currentUser.role === 'mentor') return s.status === 'pending' && s.kejuruanId === currentUser.kejuruanId;
+    if (currentUser.role === 'mentor') return s.status === 'pending' && mentorKejuruanIds.includes(s.kejuruanId);
     return false;
   }).length;
 
@@ -82,7 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const pendingTraineeVerifications = attendanceRecords.filter(r => {
     return (
       r.date === todayStr &&
-      r.kejuruanId === currentUser.kejuruanId &&
+      mentorKejuruanIds.includes(r.kejuruanId) &&
       (r.userRole === 'trainee' || !r.userRole) &&
       r.verificationStatus === 'pending'
     );
@@ -90,7 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const pendingDailyReportsCount = dailyReports.filter(r => {
     if (currentUser.role === 'admin') return r.status === 'pending';
-    if (currentUser.role === 'mentor') return r.status === 'pending' && r.kejuruanId === currentUser.kejuruanId;
+    if (currentUser.role === 'mentor') return r.status === 'pending' && mentorKejuruanIds.includes(r.kejuruanId);
     return false;
   }).length;
 

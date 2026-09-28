@@ -121,6 +121,27 @@ export async function initDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
 
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS missions (
+      id VARCHAR(96) PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      kejuruan_id VARCHAR(64) NOT NULL,
+      kejuruan_name VARCHAR(255) NOT NULL,
+      mentor_id VARCHAR(64) NOT NULL,
+      mentor_name VARCHAR(128) NOT NULL,
+      points INT NOT NULL DEFAULT 100,
+      difficulty VARCHAR(32) NOT NULL DEFAULT 'Sedang',
+      due_date VARCHAR(10) NOT NULL,
+      created_at VARCHAR(32) NOT NULL,
+      status VARCHAR(16) NOT NULL DEFAULT 'active',
+      category VARCHAR(128),
+      submission_guide TEXT,
+      INDEX idx_missions_kejuruan_status (kejuruan_id, status),
+      INDEX idx_missions_mentor (mentor_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
   // Pastikan akun Administrator langsung terdaftar di MySQL
   const [existingAdmin] = await p.query<any[]>(
     "SELECT id FROM users WHERE role = 'admin' LIMIT 1"
