@@ -67,7 +67,7 @@ export const LoginView: React.FC = () => {
           </p>
 
           {/* Database & JWT Status Chip */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white rounded-full border border-[#DCE4EC] text-[11px] shadow-xs">
+          <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 px-3 py-1 bg-white rounded-2xl sm:rounded-full border border-[#DCE4EC] text-[11px] shadow-xs">
             <Database className="w-3.5 h-3.5 text-[#123B59]" />
             <span className="font-semibold text-[#123B59]">TiDB Cloud</span>
             <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">

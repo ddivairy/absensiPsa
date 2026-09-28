@@ -130,7 +130,7 @@ const MainLayout: React.FC = () => {
       <div className="flex-1 w-full lg:pl-[280px] p-4 sm:p-5 lg:p-6 pb-24 lg:pb-8 flex flex-col">
         {/* Top Header matching style.html */}
         <header className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div className="flex items-center justify-between lg:block">
+          <div className="flex min-w-0 flex-col gap-3 lg:block">
             {/* Mobile Brand with Hamburger */}
             <div className="lg:hidden flex items-center gap-2.5">
               <button
@@ -156,7 +156,7 @@ const MainLayout: React.FC = () => {
               <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5]">
                 PRESENSI MAGANG HARIAN
               </p>
-              <h1 className="mt-1 font-bold text-2xl lg:text-3xl text-[#123B59] tracking-tight">
+              <h1 className="mt-1 break-words font-bold text-2xl lg:text-3xl text-[#123B59] tracking-tight">
                 Selamat datang, {currentUser.name}
               </h1>
               <p className="mt-0.5 text-sm text-[#6F7F8D]">{headerDate}</p>
@@ -165,7 +165,7 @@ const MainLayout: React.FC = () => {
           </div>
 
           {/* Current time and authenticated role */}
-          <div className="surface flex items-center gap-3 rounded-2xl px-3.5 py-2.5">
+          <div className="surface flex w-fit max-w-full flex-wrap items-center gap-3 self-start rounded-2xl px-3.5 py-2.5 sm:self-end lg:flex-nowrap lg:self-auto">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF2F8] text-[#4C83B5]">
               <Clock className="h-4 w-4" />
             </span>
@@ -184,7 +184,7 @@ const MainLayout: React.FC = () => {
         </header>
 
         {/* Page Content View */}
-        <main className="flex-1 w-full">{renderContent()}</main>
+        <main className="min-w-0 w-full flex-1">{renderContent()}</main>
 
         {/* Footer */}
         <footer className="mt-10 pt-4 border-t border-[#E4EAF0] text-xs text-[#6F7F8D] flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -194,7 +194,7 @@ const MainLayout: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar (from style.html) */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 z-30 w-full border-t border-[#E4EAF0] bg-white/95 px-3 pb-3 pt-2 backdrop-blur-md"
+        className="mobile-bottom-nav lg:hidden fixed bottom-0 left-0 z-30 w-full border-t border-[#E4EAF0] bg-white/95 px-3 pt-2 backdrop-blur-md"
         aria-label="Navigasi mobile"
       >
         <div className="grid grid-cols-4 gap-1 text-center">

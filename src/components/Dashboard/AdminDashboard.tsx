@@ -248,7 +248,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Segmented View Switcher: Verifikasi Mentor vs Rekap Peserta */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E4EAF0] pb-3">
-        <div className="flex items-center gap-1 bg-[#F4F6F8] p-1 rounded-xl border border-[#E4EAF0]">
+        <div className="flex flex-wrap items-center gap-1 bg-[#F4F6F8] p-1 rounded-xl border border-[#E4EAF0]">
           <button
             onClick={() => setActiveAdminView('mentors')}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-2 ${

@@ -212,7 +212,7 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={() => {

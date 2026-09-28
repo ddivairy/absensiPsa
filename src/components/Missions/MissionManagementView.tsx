@@ -323,7 +323,7 @@ export const MissionManagementView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Action Button for Mentor / Admin */}
           {(isMentor || isAdmin) && (
             <button
