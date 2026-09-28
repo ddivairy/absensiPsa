@@ -84,7 +84,7 @@ export const api = {
     return this.request<HealthResponse>('/api/health');
   },
 
-  // Login with 8-digit code or Email/NIM + password
+  // Login with 8-digit code or NIM + password
   async login(credentials: {
     code?: string;
     identifier?: string;
@@ -154,6 +154,27 @@ export const api = {
     return this.request<{ success: boolean; message: string }>(`/api/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
+    });
+  },
+
+  async updateMyAvatar(avatar: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/api/profile/avatar', {
+      method: 'PUT',
+      body: JSON.stringify({ avatar }),
+    });
+  },
+
+  async changePassword(payload: { currentPassword: string; newPassword: string }): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async uploadImageToCloudinary(payload: { image: string; folder?: string }): Promise<{ success: boolean; url?: string; publicId?: string; message: string }> {
+    return this.request<{ success: boolean; url?: string; publicId?: string; message: string }>('/api/upload', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   },
 

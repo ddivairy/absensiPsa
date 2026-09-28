@@ -130,7 +130,6 @@ export const TraineeManagementView: React.FC = () => {
         u.name.toLowerCase().includes(q) ||
         u.nim.toLowerCase().includes(q) ||
         (u.loginCode && u.loginCode.includes(q)) ||
-        u.email.toLowerCase().includes(q) ||
         (u.kejuruanName || '').toLowerCase().includes(q);
 
       return matchSearch;
@@ -195,7 +194,6 @@ export const TraineeManagementView: React.FC = () => {
 
     const res = await addUser({
       name: newUserName,
-      email: `${newUserNim}@hadirku.id`,
       role: newUserRole,
       nim: newUserNim,
       kejuruanId: newUserKejuruanId,
@@ -510,7 +508,7 @@ export const TraineeManagementView: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Cari nama, NIM, kode 8-digit, email..."
+                            placeholder="Cari nama, NIM, atau kode 8-digit..."
             className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] outline-none focus:border-[#4C83B5]"
           />
         </div>
