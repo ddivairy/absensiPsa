@@ -316,7 +316,7 @@ export const LeaveManagementView: React.FC = () => {
                         <p className="mt-2 text-sm text-[#123B59] bg-[#F8FAFB] p-2.5 rounded-xl border border-[#E4EAF0]">
                           "{leave.reason}"
                         </p>
-                        {leave.attachmentName && (
+                        {(leave.attachmentUrl || leave.attachmentName) && (
                           <p className="mt-2 text-xs text-[#4C83B5] flex items-center gap-1">
                             <Paperclip className="w-3 h-3" />
                             <span>Lampiran: </span>

@@ -41,6 +41,13 @@ export function computeMonthlyRecapData(params: ExportParams): {
   // Filter trainees by selected Kejuruan
   const filteredTrainees = trainees.filter(t => {
     if (selectedKejuruanId === 'all') return true;
+    if (selectedKejuruanId === 'smart-creative') {
+      const program = kejuruanList.find(k => k.id === t.kejuruanId);
+      return !!program && (program.category === 'Smart Creative' ||
+        program.name.includes('Generative AI') ||
+        program.name.includes('Konten Visual untuk Sosial Media') ||
+        program.name.includes('Optimalisasi Pemasaran Melalui Media Sosial'));
+    }
     return t.kejuruanId === selectedKejuruanId;
   });
 
@@ -58,6 +65,8 @@ export function computeMonthlyRecapData(params: ExportParams): {
       ? trainees.length === 1 && trainees[0].kejuruanName
         ? trainees[0].kejuruanName
         : 'Semua Kejuruan'
+      : selectedKejuruanId === 'smart-creative'
+      ? 'Smart Creative'
       : kejuruanObj?.name || 'Kejuruan';
 
   // Compute stats per trainee

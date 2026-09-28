@@ -234,6 +234,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
+  // Refresh the role-scoped leave list from Diva's dedicated leave endpoint.
+  useEffect(() => {
+    if (!jwtToken) return;
+    let isMounted = true;
+    api.getLeaveRequests()
+      .then(res => {
+        if (isMounted && res.success) setLeaveRequests(res.requests);
+      })
+      .catch(error => console.warn('Could not fetch leave requests from TiDB:', error));
+    return () => { isMounted = false; };
+  }, [jwtToken, currentUserId]);
+
   // Current active user object
   const currentUser = users.find(u => u.id === currentUserId) || ({} as User);
 
@@ -603,7 +615,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             date: dateStr,
             status: targetLeave.type,
             verificationStatus: 'verified',
-            verifiedBy: `${currentUser.name} (${currentUser.role === 'admin' ? 'Admin' : 'Mentor'})`,
+            verifiedBy: `${currentUser.name} (Mentor)`,
             verifiedAt: `${getTodayDateString()} ${getCurrentTimeWIB()}`,
             notes: `${targetLeave.type.toUpperCase()}: ${targetLeave.reason}`
           });

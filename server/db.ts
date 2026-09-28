@@ -256,5 +256,14 @@ export async function initDatabase() {
     await p.query(migration);
   }
 
+  const [leaveAttachmentColumns] = await p.query<any[]>(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'leave_requests' AND COLUMN_NAME = 'attachment_name'`,
+    [database]
+  );
+  if (leaveAttachmentColumns.length === 0) {
+    await p.query('ALTER TABLE leave_requests ADD COLUMN attachment_name VARCHAR(255) NULL AFTER reason');
+  }
+
   console.log(`[TiDB] Skema aplikasi siap: ${tableMigrations.length} tabel.`);
 }
