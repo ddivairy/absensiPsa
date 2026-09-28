@@ -157,7 +157,7 @@ const MainLayout: React.FC = () => {
                 PRESENSI MAGANG HARIAN
               </p>
               <h1 className="mt-1 font-bold text-2xl lg:text-3xl text-[#123B59] tracking-tight">
-                Selamat datang kembali
+                Selamat datang, {currentUser.name}
               </h1>
               <p className="mt-0.5 text-sm text-[#6F7F8D]">{headerDate}</p>
             </div>
