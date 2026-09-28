@@ -73,7 +73,16 @@ export const LeaveManagementView: React.FC = () => {
   const downloadLetterTemplate = () => {
     const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
     const documentHtml = `<!doctype html><html><head><meta charset="utf-8"><title>Template Surat Izin</title></head><body style="font-family:Arial,sans-serif;max-width:760px;margin:48px auto;line-height:1.7;color:#111"><p style="text-align:right">Bandung, ${escapeHtml(formatIndonesianDate(today))}</p><p>Kepada Yth.<br><b>Mentor/Pembimbing Punya Skill Akademi</b><br>di tempat</p><p><b>Perihal: Permohonan Izin Tidak Hadir</b></p><p>Dengan hormat,</p><p>Saya yang bertanda tangan di bawah ini:</p><table style="border-collapse:collapse"><tr><td style="padding:3px 16px 3px 0">Nama</td><td>: ${escapeHtml(currentUser.name)}</td></tr><tr><td style="padding:3px 16px 3px 0">NIM/Kode Peserta</td><td>: ${escapeHtml(currentUser.nim)}</td></tr><tr><td style="padding:3px 16px 3px 0">Program</td><td>: ${escapeHtml(currentUser.kejuruanName || '—')}</td></tr></table><p>Dengan ini mengajukan izin tidak hadir pada tanggal <b>${escapeHtml(formatIndonesianDate(startDate))}</b>${startDate !== endDate ? ` sampai dengan <b>${escapeHtml(formatIndonesianDate(endDate))}</b>` : ''} karena:</p><p style="min-height:72px;border-bottom:1px solid #888">${escapeHtml(reason.trim() || '[Tuliskan alasan izin]')}</p><p>Sebagai bahan pertimbangan, saya melampirkan dokumen pendukung. Saya akan bertanggung jawab untuk mengejar materi atau tugas yang tertinggal. Demikian permohonan ini saya sampaikan. Atas perhatian dan izin yang diberikan, saya ucapkan terima kasih.</p><p style="margin-top:52px">Hormat saya,</p><p style="margin-top:72px"><b>${escapeHtml(currentUser.name)}</b><br>${escapeHtml(currentUser.nim)}</p></body></html>`;
-    const url = URL.createObjectURL(new Blob([documentHtml], { type: 'application/msword;charset=utf-8' }));
+    const themedDocumentHtml = documentHtml
+      .replace(
+        '<body style="font-family:Arial,sans-serif;max-width:760px;margin:48px auto;line-height:1.7;color:#111">',
+        '<body style="font-family:Arial,sans-serif;max-width:760px;margin:48px auto;line-height:1.7;color:#0D2F47"><h1 style="color:#0D2F47;font-size:20px;text-align:center">SURAT PERMOHONAN IZIN</h1>'
+      )
+      .replace(
+        '</p></body></html>',
+        '</p><p style="margin-top:52px;text-align:right">Mengetahui,<br>Koordinator Program Pelatihan<br><br><br><b>Abdul Rozzak Junaidi</b></p></body></html>'
+      );
+    const url = URL.createObjectURL(new Blob([themedDocumentHtml], { type: 'application/msword;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
     link.download = `Template_Surat_Izin_${currentUser.nim}.doc`;

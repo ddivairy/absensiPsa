@@ -273,7 +273,7 @@ export function exportToPDF(params: ExportParams): void {
   });
 
   // Header Banner styling
-  doc.setFillColor(37, 99, 235); // Blue 600
+  doc.setFillColor(13, 47, 71); // #0D2F47
   doc.rect(0, 0, 297, 18, 'F');
 
   // Title
@@ -386,8 +386,7 @@ export function exportToPDF(params: ExportParams): void {
     doc.text('Disahkan Oleh,', 210, finalY);
     doc.text('Koordinator Program Pelatihan', 210, finalY + 5);
     doc.line(210, finalY + 25, 265, finalY + 25);
-    doc.text('Bambang Sudirman, M.Kom', 210, finalY + 29);
-    doc.text('NIP. 19820514 200801 1 002', 210, finalY + 33);
+    doc.text('Abdul Rozzak Junaidi', 210, finalY + 29);
   }
 
   // Footer notes & page number

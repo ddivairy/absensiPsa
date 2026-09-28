@@ -174,8 +174,8 @@ export const MonthlyRecapView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E4EAF0]">
-        <div>
+      <div className="flex flex-col items-start gap-3 pb-4 border-b border-[#E4EAF0]">
+        <div className="min-w-0 w-full">
           <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase">
             CATATAN KEHADIRAN & REKAPITULASI
           </p>
@@ -196,7 +196,7 @@ export const MonthlyRecapView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             onClick={handleExportExcel}
             className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
