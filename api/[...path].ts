@@ -1,5 +1,5 @@
-import app from '../server/index';
-import { createVercelHandler } from '../server/vercelHandler';
+import app from '../server/index.js';
+import { createVercelHandler } from '../server/vercelHandler.js';
 
 export const config = {
   maxDuration: 30,

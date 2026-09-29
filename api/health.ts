@@ -1,4 +1,4 @@
-import { describeDatabaseConfig, pingDatabase } from '../server/db';
+import { describeDatabaseConfig, pingDatabase } from '../server/db.js';
 
 export const config = {
   maxDuration: 15,

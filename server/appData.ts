@@ -1,8 +1,8 @@
 import { Router, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { getPool } from './db';
-import { authenticateToken, AuthenticatedRequest } from './auth';
-import { canonicalKejuruanCode } from './kejuruanCodes';
+import { getPool } from './db.js';
+import { authenticateToken, AuthenticatedRequest } from './auth.js';
+import { canonicalKejuruanCode } from './kejuruanCodes.js';
 
 export const appDataRouter = Router();
 

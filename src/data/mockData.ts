@@ -523,7 +523,7 @@ export function generateInitialAttendance(): AttendanceRecord[] {
         verifiedBy,
         verifiedAt: verifiedBy ? `${date} 09:00:00` : undefined,
         location: 'Punya Skill Akademi, Bandung',
-        coordinates: { lat: -6.921024681282541, lng: 107.6750205521894 },
+        coordinates: { lat: -6.921045982595817, lng: 107.67498836568335 },
         notes
       });
     });

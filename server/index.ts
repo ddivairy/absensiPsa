@@ -1,11 +1,11 @@
 import express, { Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { getPool, initDatabase, pingDatabase, describeDatabaseConfig, DbUser } from './db';
-import { appDataRouter } from './appData';
-import { canonicalKejuruanCode } from './kejuruanCodes';
+import { getPool, initDatabase, pingDatabase, describeDatabaseConfig, DbUser } from './db.js';
+import { appDataRouter } from './appData.js';
+import { canonicalKejuruanCode } from './kejuruanCodes.js';
 import bcrypt from 'bcryptjs';
-import { createDirectUploadSignature, uploadToCloudinary, isCloudinaryConfigured } from './cloudinary';
+import { createDirectUploadSignature, uploadToCloudinary, isCloudinaryConfigured } from './cloudinary.js';
 import {
   generateToken,
   authenticateToken,
@@ -13,7 +13,7 @@ import {
   comparePassword,
   AuthenticatedRequest,
   Role,
-} from './auth';
+} from './auth.js';
 
 dotenv.config();
 

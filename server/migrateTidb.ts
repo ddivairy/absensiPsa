@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { randomInt, randomUUID } from 'node:crypto';
-import { ensureDatabaseExists, getPool, initDatabase } from './db';
+import { ensureDatabaseExists, getPool, initDatabase } from './db.js';
 
 function randomEightDigitNumber(): string {
   return String(randomInt(10_000_000, 100_000_000));
