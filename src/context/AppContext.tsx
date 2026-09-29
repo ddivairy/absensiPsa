@@ -116,7 +116,7 @@ interface AppContextType {
   regenerateUserCredentials: (userId: string) => Promise<{ loginCode: string; password: string; success: boolean; message?: string }>;
   addKejuruan: (kjData: Omit<Kejuruan, 'id'>) => void;
   updateKejuruan: (id: string, updates: Partial<Kejuruan>) => void;
-  updateSettings: (newSettings: Partial<AttendanceSettings>) => void;
+  updateSettings: (newSettings: Partial<AttendanceSettings>) => Promise<{ success: boolean; message: string }>;
   resetToDefaultData: () => void;
 }
 
@@ -910,8 +910,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setKejuruanList(prev => prev.map(k => (k.id === id ? { ...k, ...updates } : k)));
   };
 
-  const updateSettings = (newSettings: Partial<AttendanceSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
+  const updateSettings = async (newSettings: Partial<AttendanceSettings>): Promise<{ success: boolean; message: string }> => {
+    const updatedSettings = { ...settings, ...newSettings };
+    try {
+      await api.saveAppData({
+        kejuruanList: [],
+        attendanceRecords: [],
+        leaveRequests: [],
+        settings: updatedSettings,
+        missions: [],
+        missionSubmissions: [],
+        dailyReports: [],
+      });
+      setSettings(updatedSettings);
+      return { success: true, message: 'Pengaturan presensi berhasil disimpan ke sistem.' };
+    } catch (error: any) {
+      console.error('[TiDB] Gagal menyimpan pengaturan presensi:', error);
+      return { success: false, message: error.message || 'Pengaturan presensi gagal disimpan.' };
+    }
   };
 
   // Missions & Submissions Actions
