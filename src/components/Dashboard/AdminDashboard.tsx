@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Users,
@@ -16,13 +16,16 @@ import {
 import { getTodayDateString, formatIndonesianDate, getCurrentTimeWIB } from '../../utils/dateUtils';
 import { AttendanceStatus } from '../../types';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { getKejuruanFilterOptions, HIDDEN_ADMIN_DASHBOARD_PROGRAM_CODES, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
 
 export const AdminDashboard: React.FC = () => {
   const {
     currentUser,
     users,
+    refreshUsers,
     kejuruanList,
     attendanceRecords,
+    refreshAttendanceRecords,
     leaveRequests,
     verifyAttendance,
     markAttendanceStatus,
@@ -35,6 +38,23 @@ export const AdminDashboard: React.FC = () => {
   const [selectedKejuruanFilter, setSelectedKejuruanFilter] = useState<string>('all');
   const [activeAdminView, setActiveAdminView] = useState<'mentors' | 'trainees'>('mentors');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const refresh = () => void refreshAttendanceRecords();
+    refresh();
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 15000);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.clearInterval(timer);
+    };
+  }, [refreshAttendanceRecords]);
+
+  // A normal login starts with only the signed-in user in AppContext. Fetch
+  // the complete admin-visible roster whenever this dashboard is opened.
+  useEffect(() => {
+    void refreshUsers();
+  }, [refreshUsers]);
 
   const mentors = useMemo(() => users.filter(u => u.role === 'mentor'), [users]);
   const trainees = useMemo(() => users.filter(u => u.role === 'trainee'), [users]);
@@ -128,9 +148,17 @@ export const AdminDashboard: React.FC = () => {
 
   // Kejuruan statistics for trainees
   const kejuruanStats = useMemo(() => {
-    const stats = kejuruanList.map(kj => {
-      const kjTrainees = trainees.filter(t => t.kejuruanId === kj.id);
-      const kjRecords = traineeTodayRecords.filter(r => r.kejuruanId === kj.id);
+    const stats = kejuruanList.filter(kj =>
+      !HIDDEN_ADMIN_DASHBOARD_PROGRAM_CODES.has(kj.code.trim().toUpperCase())
+    ).map(kj => {
+      const normalizedProgramName = kj.name.trim().toLocaleLowerCase();
+      const kjTrainees = trainees.filter(t =>
+        t.kejuruanId === kj.id || t.kejuruanName?.trim().toLocaleLowerCase() === normalizedProgramName
+      );
+      const traineeIds = new Set(kjTrainees.map(trainee => trainee.id));
+      const kjRecords = traineeTodayRecords.filter(r =>
+        traineeIds.has(r.userId) || r.kejuruanId === kj.id || r.kejuruanName?.trim().toLocaleLowerCase() === normalizedProgramName
+      );
       const present = kjRecords.filter(r => r.status === 'hadir' || r.status === 'terlambat').length;
       const rate = kjTrainees.length > 0 ? Math.round((present / kjTrainees.length) * 100) : 0;
 
@@ -154,7 +182,7 @@ export const AdminDashboard: React.FC = () => {
         kejuruan: {
           id: 'smart-creative',
           name: 'Smart Creative',
-          code: 'SC',
+          code: 'SC-04',
           category: 'Smart Creative',
           color: '#059669',
           description: 'Program Smart Creative yang mencakup tiga kejuruan.'
@@ -425,7 +453,7 @@ export const AdminDashboard: React.FC = () => {
                               {record.status}
                             </span>
                           ) : (
-                            <span className="rounded-full px-2.5 py-1 text-[10px] font-bold bg-[#F4F6F8] text-[#6F7F8D]">
+                            <span className="inline-flex whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-bold bg-[#F4F6F8] text-[#6F7F8D]">
                               Belum Absen
                             </span>
                           )}
@@ -652,11 +680,13 @@ export const AdminDashboard: React.FC = () => {
                   className="text-xs py-2 px-3 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-semibold outline-none focus:border-[#4C83B5]"
                 >
                   <option value="all">Semua Kejuruan</option>
-                  {smartCreativeProgramIds.length > 1 && <option value="smart-creative">Smart Creative</option>}
-                  {kejuruanList.map(kj => (
-                    <option key={kj.id} value={kj.id}>
-                      {kj.name}
-                    </option>
+                  {kejuruanList.filter(kj => kj.category === 'Smart Creative').map(kj => (
+                    <option key={`${kj.id}-group`} value={kj.id}>SC-04 - Semua Smart Creative</option>
+                  ))}
+                  {getKejuruanFilterOptions(kejuruanList.filter(kj =>
+                    !HIDDEN_ADMIN_DASHBOARD_PROGRAM_CODES.has(kj.code.trim().toUpperCase())
+                  )).map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
               </div>
@@ -676,10 +706,7 @@ export const AdminDashboard: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-[#E4EAF0]">
                   {trainees
-                    .filter(t => selectedKejuruanFilter === 'all' ||
-                      (selectedKejuruanFilter === 'smart-creative'
-                        ? smartCreativeProgramIds.includes(t.kejuruanId || '')
-                        : t.kejuruanId === selectedKejuruanFilter))
+                    .filter(t => matchesKejuruanFilter(selectedKejuruanFilter, kejuruanList, t.kejuruanId, t.kejuruanName))
                     .map(trainee => {
                       const record = traineeTodayRecords.find(r => r.userId === trainee.id);
                       const isPending = record && record.verificationStatus === 'pending';

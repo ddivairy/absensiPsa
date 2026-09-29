@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
+import { getKejuruanFilterOptions, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
 import { User, MissionSubmission } from '../../types';
 import {
   Trophy,
@@ -121,7 +123,7 @@ export const HallOfFameView: React.FC = () => {
   // Filtered rankings
   const filteredRankings = useMemo(() => {
     return rankings.filter(r => {
-      if (selectedKejuruanFilter !== 'all' && r.user.kejuruanId !== selectedKejuruanFilter) {
+      if (!matchesKejuruanFilter(selectedKejuruanFilter, kejuruanList, r.user.kejuruanId, r.user.kejuruanName)) {
         return false;
       }
       if (searchQuery) {
@@ -133,7 +135,7 @@ export const HallOfFameView: React.FC = () => {
       }
       return true;
     });
-  }, [rankings, selectedKejuruanFilter, searchQuery]);
+  }, [rankings, selectedKejuruanFilter, searchQuery, kejuruanList]);
 
   // Current logged in trainee's standing
   const myRanking = useMemo(() => {
@@ -149,7 +151,7 @@ export const HallOfFameView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col items-start gap-4">
         <div>
           <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase mb-1">
             Papan Prestasi
@@ -160,6 +162,7 @@ export const HallOfFameView: React.FC = () => {
           <p className="text-xs text-[#6F7F8D] mt-0.5">
             Papan peringkat seluruh peserta pelatihan vokasi dengan perolehan poin misi tertinggi.
           </p>
+          <MobileHeaderStatus />
         </div>
 
         {currentUser.role === 'trainee' && myRanking && (
@@ -325,10 +328,8 @@ export const HallOfFameView: React.FC = () => {
             className="text-xs py-1.5 px-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none max-w-xs"
           >
             <option value="all">Semua Program Kejuruan</option>
-            {kejuruanList.map(k => (
-              <option key={k.id} value={k.id}>
-                {k.code} - {k.name}
-              </option>
+            {getKejuruanFilterOptions(kejuruanList).map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </div>
@@ -347,7 +348,7 @@ export const HallOfFameView: React.FC = () => {
                 <th className="py-3 px-4 w-16 text-center">Rank</th>
                 <th className="py-3 px-4">Peserta Pelatihan</th>
                 <th className="py-3 px-3">Kejuruan Vokasi</th>
-                <th className="py-3 px-3">Tingkat Prestasi</th>
+                <th className="py-3 px-3 min-w-[150px]">Tingkat Prestasi</th>
                 <th className="py-3 px-3 text-center">Misi Selesai</th>
                 <th className="py-3 px-4 text-right">Total Poin</th>
                 <th className="py-3 px-4 text-right">Detail</th>
@@ -429,9 +430,9 @@ export const HallOfFameView: React.FC = () => {
                       </td>
 
                       {/* Badge / Level */}
-                      <td className="py-3 px-3">
+                      <td className="py-3 px-3 whitespace-nowrap">
                         <span
-                          className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${ranking.badgeLevel.bg} ${ranking.badgeLevel.color} ${ranking.badgeLevel.border}`}
+                          className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-md text-[11px] font-semibold border ${ranking.badgeLevel.bg} ${ranking.badgeLevel.color} ${ranking.badgeLevel.border}`}
                         >
                           {ranking.badgeLevel.title}
                         </span>

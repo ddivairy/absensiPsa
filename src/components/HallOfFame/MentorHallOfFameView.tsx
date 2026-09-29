@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Award, CalendarCheck2, Trophy } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 
 export const MentorHallOfFameView: React.FC = () => {
   const { users, attendanceRecords } = useApp();
@@ -29,6 +30,7 @@ export const MentorHallOfFameView: React.FC = () => {
         <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#4C83B5]">APRESIASI INSTRUKTUR</p>
         <h1 className="mt-1 text-2xl font-bold text-[#123B59]">Hall of Fame Mentor</h1>
         <p className="mt-1 text-sm text-[#6F7F8D]">Peringkat mentor berdasarkan jumlah presensi yang telah diverifikasi admin.</p>
+        <MobileHeaderStatus />
       </header>
 
       <section className="surface overflow-hidden rounded-2xl border border-[#E4EAF0]">

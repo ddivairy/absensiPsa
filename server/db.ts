@@ -23,6 +23,9 @@ function getDbConfig() {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    // Preserve SQL DATE values as YYYY-MM-DD strings. Converting DATE to a JS
+    // Date applies the server timezone and can shift attendance to the prior day.
+    dateStrings: ['DATE'] as ('DATE' | 'DATETIME' | 'TIMESTAMP')[],
   };
 }
 
@@ -120,6 +123,7 @@ export async function initDatabase() {
       attendance_date DATE NOT NULL,
       check_in_time TIME,
       check_out_time TIME,
+      work_mode ENUM('WFO','WFH') NULL,
       status ENUM('hadir','terlambat','izin','sakit','alpha') NOT NULL,
       verification_status ENUM('pending','verified','rejected') NOT NULL DEFAULT 'pending',
       verified_by VARCHAR(64),
@@ -264,6 +268,75 @@ export async function initDatabase() {
   if (leaveAttachmentColumns.length === 0) {
     await p.query('ALTER TABLE leave_requests ADD COLUMN attachment_name VARCHAR(255) NULL AFTER reason');
   }
+
+  const [attendanceWorkModeColumns] = await p.query<any[]>(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'attendance_records' AND COLUMN_NAME = 'work_mode'`,
+    [database]
+  );
+  if (attendanceWorkModeColumns.length === 0) {
+    await p.query("ALTER TABLE attendance_records ADD COLUMN work_mode ENUM('WFO','WFH') NULL AFTER check_out_time");
+  }
+
+  const [attendanceDayUniqueIndex] = await p.query<any[]>(
+    `SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'attendance_records' AND INDEX_NAME = 'uq_attendance_user_date'`,
+    [database]
+  );
+  if (attendanceDayUniqueIndex.length === 0) {
+    const [duplicateAttendanceGroups] = await p.query<any[]>(
+      `SELECT COUNT(*) AS total FROM (
+         SELECT user_id, attendance_date FROM attendance_records
+         GROUP BY user_id, attendance_date HAVING COUNT(*) > 1
+       ) duplicate_days`
+    );
+    if (Number(duplicateAttendanceGroups[0]?.total || 0) === 0) {
+      await p.query('ALTER TABLE attendance_records ADD UNIQUE KEY uq_attendance_user_date (user_id, attendance_date)');
+    } else {
+      console.warn(`[TiDB] Unique index presensi per user/hari belum dibuat: ditemukan ${duplicateAttendanceGroups[0].total} grup duplikat lama.`);
+    }
+  }
+
+  await p.query(`UPDATE kejuruan SET code = CASE
+    WHEN LOWER(TRIM(name)) LIKE '%pemasangan sistem integrasi bangunan cerdas%' OR LOWER(code) = 'imp-1nl422t' THEN 'SB-04'
+    WHEN LOWER(TRIM(name)) LIKE '%pembuatan sistem informasi pariwisata berbasis website%' OR LOWER(code) = 'imp-1t5ojqc' THEN 'ST-04'
+    WHEN LOWER(TRIM(name)) LIKE '%pengembangan web dengan node.js dan react%' OR LOWER(code) = 'imp-hyd7hm' THEN 'WEB-04'
+    ELSE code END
+    WHERE LOWER(code) IN ('imp-1nl422t','imp-1t5ojqc','imp-hyd7hm')
+       OR LOWER(TRIM(name)) LIKE '%pemasangan sistem integrasi bangunan cerdas%'
+       OR LOWER(TRIM(name)) LIKE '%pembuatan sistem informasi pariwisata berbasis website%'
+       OR LOWER(TRIM(name)) LIKE '%pengembangan web dengan node.js dan react%'`);
+
+  const [smartCreativeRows] = await p.query<any[]>(`SELECT id, name FROM kejuruan
+    WHERE LOWER(TRIM(category)) = 'smart creative'
+       OR LOWER(name) LIKE '%generative ai%'
+       OR LOWER(name) LIKE '%konten visual untuk sosial media%'
+       OR LOWER(name) LIKE '%optimalisasi pemasaran melalui media sosial%'
+    ORDER BY CASE WHEN LOWER(name) LIKE '%generative ai%' THEN 0 ELSE 1 END, created_at ASC`);
+  if (smartCreativeRows.length) {
+    const smartCreativeId = String(smartCreativeRows[0].id);
+    const relatedTables = ['users', 'attendance_records', 'leave_requests', 'missions', 'mission_submissions', 'daily_reports'];
+    for (const oldProgram of smartCreativeRows) {
+      for (const table of relatedTables) {
+        await p.query(
+          `UPDATE ${table} SET kejuruan_id = ?
+           WHERE kejuruan_id = ? OR LOWER(TRIM(kejuruan_name)) = LOWER(TRIM(?))`,
+          [smartCreativeId, oldProgram.id, oldProgram.name]
+        );
+      }
+      if (String(oldProgram.id) !== smartCreativeId) {
+        await p.query('DELETE FROM kejuruan WHERE id = ?', [oldProgram.id]);
+      }
+    }
+    await p.query(
+      `UPDATE kejuruan SET name = 'Smart Creative', code = 'SC-04', category = 'Smart Creative',
+       description = 'Program gabungan Generative AI, konten visual, dan pemasaran media sosial.',
+       mentor_name = 'Mas Dzikri' WHERE id = ?`,
+      [smartCreativeId]
+    );
+  }
+
+  await p.query(`DELETE FROM kejuruan WHERE UPPER(code) IN ('CS-05','DA-03','DM-04','UX-02','WD-01')`);
 
   console.log(`[TiDB] Skema aplikasi siap: ${tableMigrations.length} tabel.`);
 }

@@ -128,11 +128,11 @@ export const TraineeDashboard: React.FC = () => {
     setIsLocating(true);
     setLocationError(null);
     navigator.geolocation.getCurrentPosition(
-      position => {
+      async position => {
         const coordinates = { lat: position.coords.latitude, lng: position.coords.longitude };
         const result = isCheckedIn
-          ? clockOut(undefined, coordinates)
-          : clockIn(dailyNote, undefined, coordinates, workMode);
+          ? await clockOut(undefined, coordinates)
+          : await clockIn(dailyNote, undefined, coordinates, workMode);
         setIsLocating(false);
         showToast(result.message);
       },
@@ -237,8 +237,9 @@ export const TraineeDashboard: React.FC = () => {
         </div>
       )}
 
+      <div className="flex flex-col gap-5">
       {/* 1. Summary Cards (Matching style.html) */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section className="order-2 grid grid-cols-1 gap-4 sm:order-1 sm:grid-cols-3">
         {/* Hadir */}
         <article className="metric-card soft-hover surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
@@ -295,7 +296,7 @@ export const TraineeDashboard: React.FC = () => {
       </section>
 
       {/* 2. Middle Section: Today's Status & Today's Activity */}
-      <div className="grid gap-5 xl:grid-cols-12">
+      <div className="order-1 grid gap-5 sm:order-2 xl:grid-cols-12">
         {/* Left: Presensi Hari Ini (today-status-card) */}
         <section className="surface soft-hover rounded-2xl p-5 sm:p-6 xl:col-span-7 flex flex-col justify-between">
           <div>
@@ -402,12 +403,12 @@ export const TraineeDashboard: React.FC = () => {
 
           {/* Big Action Button (Matching style.html) */}
           <div className="mt-5">
-            {!isCheckedIn && !todayLeave && (
-              <fieldset className="mb-3">
+            {!todayLeave && (
+              <fieldset className="mb-3" disabled={isCheckedIn}>
                 <legend className="mb-2 text-xs font-bold text-[#123B59]">Mode kerja hari ini</legend>
                 <div className="grid grid-cols-2 gap-2">
                   {(['WFO', 'WFH'] as const).map(mode => (
-                    <button key={mode} type="button" aria-pressed={workMode === mode} onClick={() => setWorkMode(mode)} className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${workMode === mode ? 'border-[#28618F] bg-[#EAF2F8] text-[#28618F]' : 'border-[#E4EAF0] bg-white text-[#6F7F8D]'}`}>
+                    <button key={mode} type="button" aria-pressed={(todayRecord?.workMode || workMode) === mode} onClick={() => setWorkMode(mode)} className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${(todayRecord?.workMode || workMode) === mode ? 'border-[#28618F] bg-[#EAF2F8] text-[#28618F]' : 'border-[#E4EAF0] bg-white text-[#6F7F8D]'} disabled:cursor-not-allowed disabled:opacity-70`}>
                       {mode === 'WFO' ? 'WFO · Kantor Bandung' : 'WFH · Kerja dari rumah'}
                     </button>
                   ))}
@@ -547,6 +548,7 @@ export const TraineeDashboard: React.FC = () => {
             </p>
           </div>
         </aside>
+      </div>
       </div>
 
       {/* 3. Bottom Section: Mini Calendar & Recent History List */}

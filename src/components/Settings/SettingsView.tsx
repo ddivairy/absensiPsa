@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import { Clock, MapPin, Save, CheckCircle2, ShieldCheck, UserCheck, GraduationCap, LocateFixed } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -14,10 +15,25 @@ export const SettingsView: React.FC = () => {
   const [officeLng, setOfficeLng] = useState(settings.officeLocation.lng);
   const [locationError, setLocationError] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    setStartTime(settings.startTime);
+    setLateLimitTime(settings.lateLimitTime);
+    setEndTime(settings.endTime);
+    setLocationName(settings.officeLocation.name || 'Punya Skill Akademi, Bandung');
+    setRadiusMeters(settings.officeLocation.radiusMeters);
+    setOfficeLat(settings.officeLocation.lat);
+    setOfficeLng(settings.officeLocation.lng);
+  }, [settings]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateSettings({
+    setIsSaving(true);
+    setSaveError('');
+    setSavedSuccess(false);
+    const result = await updateSettings({
       startTime,
       lateLimitTime,
       endTime,
@@ -28,9 +44,13 @@ export const SettingsView: React.FC = () => {
         radiusMeters: Number(radiusMeters)
       }
     });
-
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+    setIsSaving(false);
+    if (result.success) {
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 2500);
+    } else {
+      setSaveError(result.message);
+    }
   };
 
   return (
@@ -46,12 +66,18 @@ export const SettingsView: React.FC = () => {
         <p className="text-xs text-[#6F7F8D] mt-1">
           Konfigurasi jam masuk pelatihan kejuruan, batas toleransi keterlambatan, dan parameter radius absensi.
         </p>
+        <MobileHeaderStatus />
       </div>
 
       {savedSuccess && (
         <div className="p-3.5 bg-[#EEF6FB] border border-[#C8DCEB] text-[#123B59] rounded-2xl text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-[#4C83B5] shrink-0" />
           <span>Pengaturan presensi berhasil disimpan ke sistem.</span>
+        </div>
+      )}
+      {saveError && (
+        <div role="alert" className="p-3.5 bg-[#FFF1F2] border border-[#F2C6CE] text-[#9F2945] rounded-2xl text-xs font-bold">
+          {saveError}
         </div>
       )}
 
@@ -227,10 +253,11 @@ export const SettingsView: React.FC = () => {
 
           <button
             type="submit"
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white text-xs font-bold transition cursor-pointer shadow-sm hover:-translate-y-0.5"
+            disabled={isSaving}
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white text-xs font-bold transition cursor-pointer shadow-sm hover:-translate-y-0.5 disabled:opacity-60"
           >
             <Save className="w-4 h-4" />
-            <span>Simpan Perubahan</span>
+            <span>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
           </button>
         </div>
       </form>

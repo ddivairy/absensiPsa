@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import { Mission, MissionDifficulty, MissionSubmission } from '../../types';
 import {
   Target,
@@ -25,6 +26,28 @@ import {
   Flame
 } from 'lucide-react';
 import { formatIndonesianDate, getTodayDateString } from '../../utils/dateUtils';
+import { getMentorKejuruanIds } from '../../utils/mentorKejuruan';
+import { getKejuruanFilterOptions, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
+
+const formatSubmissionDateTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const dateLabel = new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Asia/Jakarta',
+  }).format(date);
+  const timeLabel = new Intl.DateTimeFormat('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'Asia/Jakarta',
+  }).format(date);
+
+  return `${dateLabel}, ${timeLabel} WIB`;
+};
 
 export const MissionManagementView: React.FC = () => {
   const {
@@ -38,19 +61,49 @@ export const MissionManagementView: React.FC = () => {
     deleteMission,
     submitMissionWork,
     reviewMissionSubmission,
-    getUserPoints
+    getUserPoints,
+    refreshMissions,
+    jwtToken
   } = useApp();
 
   const isMentor = currentUser.role === 'mentor';
   const isAdmin = currentUser.role === 'admin';
   const isTrainee = currentUser.role === 'trainee';
+  const normalizeProgramName = (name?: string) => name?.trim().toLowerCase().replace(/\s+/g, ' ');
+
+  useEffect(() => {
+    if (isAdmin || !jwtToken) return;
+    const refresh = () => void refreshMissions();
+    refresh();
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 15000);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.clearInterval(timer);
+    };
+  }, [isAdmin, currentUser.id, jwtToken, refreshMissions]);
+  const mentorKejuruanIds = useMemo(
+    () => getMentorKejuruanIds(currentUser, kejuruanList),
+    [currentUser, kejuruanList]
+  );
+  const mentorProgramNames = useMemo(() => new Set(
+    kejuruanList
+      .filter(program => mentorKejuruanIds.includes(program.id))
+      .map(program => normalizeProgramName(program.name))
+      .filter((name): name is string => !!name)
+  ), [kejuruanList, mentorKejuruanIds]);
+  const mentorHasSubPrograms = isMentor && mentorKejuruanIds.some(id =>
+    kejuruanList.find(program => program.id === id)?.subPrograms?.length
+  );
 
   const [activeTab, setActiveTab] = useState<'missions' | 'submissions'>(
     isMentor ? 'missions' : 'missions'
   );
 
   const [selectedKejuruanFilter, setSelectedKejuruanFilter] = useState<string>(
-    isMentor ? currentUser.kejuruanId || 'all' : isTrainee ? currentUser.kejuruanId || 'all' : 'all'
+    isMentor ? (mentorKejuruanIds.length > 1 || mentorHasSubPrograms ? 'all' : mentorKejuruanIds[0] || 'all') : isTrainee && currentUser.kejuruanName
+      ? getKejuruanFilterOptions(kejuruanList).find(option => option.programId === currentUser.kejuruanId && option.name.toLowerCase() === currentUser.kejuruanName?.toLowerCase())?.value || currentUser.kejuruanId || 'all'
+      : isTrainee ? currentUser.kejuruanId || 'all' : 'all'
   );
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -66,8 +119,13 @@ export const MissionManagementView: React.FC = () => {
   const [formDueDate, setFormDueDate] = useState('');
   const [formSubmissionGuide, setFormSubmissionGuide] = useState('');
   const [formKejuruanId, setFormKejuruanId] = useState(
-    isMentor ? currentUser.kejuruanId || kejuruanList[0]?.id : kejuruanList[0]?.id
+    isMentor ? mentorKejuruanIds[0] || kejuruanList[0]?.id : kejuruanList[0]?.id
   );
+  const [formKejuruanName, setFormKejuruanName] = useState(() => {
+    const selected = kejuruanList.find(program => program.id === formKejuruanId);
+    return selected?.subPrograms?.[0] || selected?.name || '';
+  });
+  const selectedFormKejuruan = kejuruanList.find(program => program.id === formKejuruanId);
 
   // Modal states for submitting mission work (Trainee)
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
@@ -92,7 +150,17 @@ export const MissionManagementView: React.FC = () => {
   // Filter missions
   const filteredMissions = useMemo(() => {
     return missions.filter(m => {
-      if (selectedKejuruanFilter !== 'all' && m.kejuruanId !== selectedKejuruanFilter) {
+      const selectedOption = getKejuruanFilterOptions(kejuruanList).find(option => option.value === selectedKejuruanFilter);
+      const selectedProgram = kejuruanList.find(program => program.id === (selectedOption?.programId || selectedKejuruanFilter));
+      const selectedProgramName = selectedOption?.name || (isTrainee || isMentor
+        ? selectedProgram?.name || currentUser.kejuruanName
+        : selectedProgram?.name);
+      const missionProgramName = normalizeProgramName(m.kejuruanName);
+      const matchesAssignedMentorProgram = isMentor && !!missionProgramName && mentorProgramNames.has(missionProgramName);
+      const matchesSelectedProgram = matchesKejuruanFilter(selectedKejuruanFilter, kejuruanList, m.kejuruanId, m.kejuruanName) ||
+        (!!missionProgramName && missionProgramName === normalizeProgramName(selectedProgramName));
+      if (isMentor && !mentorKejuruanIds.includes(m.kejuruanId) && !matchesAssignedMentorProgram) return false;
+      if (selectedKejuruanFilter !== 'all' && !matchesSelectedProgram) {
         return false;
       }
       if (selectedDifficulty !== 'all' && m.difficulty !== selectedDifficulty) {
@@ -107,20 +175,24 @@ export const MissionManagementView: React.FC = () => {
       }
       return true;
     });
-  }, [missions, selectedKejuruanFilter, selectedDifficulty, searchQuery]);
+  }, [missions, isMentor, isTrainee, currentUser.kejuruanName, kejuruanList, mentorKejuruanIds, mentorProgramNames, selectedKejuruanFilter, selectedDifficulty, searchQuery]);
 
   // Submissions filtered for Mentor / Admin
   const relevantSubmissions = useMemo(() => {
     return missionSubmissions.filter(sub => {
-      if (isMentor && currentUser.kejuruanId) {
-        return sub.kejuruanId === currentUser.kejuruanId;
-      }
-      if (selectedKejuruanFilter !== 'all' && sub.kejuruanId !== selectedKejuruanFilter) {
+      const mission = missions.find(item => item.id === sub.missionId);
+      const programName = normalizeProgramName(sub.kejuruanName || mission?.kejuruanName);
+      const programId = sub.kejuruanId || mission?.kejuruanId;
+      const selectedOption = getKejuruanFilterOptions(kejuruanList).find(option => option.value === selectedKejuruanFilter);
+      const selectedProgramName = selectedOption?.name || kejuruanList.find(program => program.id === selectedKejuruanFilter)?.name || currentUser.kejuruanName;
+      const matchesAssignedMentorProgram = isMentor && !!programName && mentorProgramNames.has(programName);
+      if (isMentor && !mentorKejuruanIds.includes(programId || '') && !matchesAssignedMentorProgram) return false;
+      if (!matchesKejuruanFilter(selectedKejuruanFilter, kejuruanList, programId, sub.kejuruanName || mission?.kejuruanName) && programName !== normalizeProgramName(selectedProgramName)) {
         return false;
       }
       return true;
     });
-  }, [missionSubmissions, isMentor, currentUser.kejuruanId, selectedKejuruanFilter]);
+  }, [missionSubmissions, missions, isMentor, mentorKejuruanIds, mentorProgramNames, kejuruanList, currentUser.kejuruanName, selectedKejuruanFilter]);
 
   const pendingSubmissionsCount = useMemo(() => {
     return relevantSubmissions.filter(s => s.status === 'pending').length;
@@ -146,7 +218,10 @@ export const MissionManagementView: React.FC = () => {
     setFormCategory('');
     setFormDueDate('');
     setFormSubmissionGuide('Sertakan tautan repositori GitHub / Figma / Google Drive beserta catatan ringkasan pengerjaan.');
-    setFormKejuruanId(isMentor ? currentUser.kejuruanId || kejuruanList[0]?.id : kejuruanList[0]?.id);
+    const targetId = isMentor ? mentorKejuruanIds[0] || kejuruanList[0]?.id : kejuruanList[0]?.id;
+    const targetProgram = kejuruanList.find(program => program.id === targetId);
+    setFormKejuruanId(targetId);
+    setFormKejuruanName(targetProgram?.subPrograms?.[0] || targetProgram?.name || '');
     setIsModalOpen(true);
   };
 
@@ -161,19 +236,35 @@ export const MissionManagementView: React.FC = () => {
     setFormDueDate(m.dueDate);
     setFormSubmissionGuide(m.submissionGuide || '');
     setFormKejuruanId(m.kejuruanId);
+    setFormKejuruanName(m.kejuruanName);
     setIsModalOpen(true);
   };
 
-  const handleSaveMission = (e: React.FormEvent) => {
+  const handleSaveMission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim() || !formDescription.trim()) {
       alert('Judul dan deskripsi misi wajib diisi.');
       return;
     }
 
-    const assignedKj = kejuruanList.find(k => k.id === formKejuruanId) || kejuruanList[0];
+    const existingMission = editingMissionId ? missions.find(m => m.id === editingMissionId) : undefined;
+    const targetKejuruanIds = isMentor
+      ? existingMission ? [existingMission.kejuruanId] : mentorKejuruanIds
+      : [formKejuruanId || kejuruanList[0]?.id].filter((id): id is string => !!id);
+    if (isMentor && targetKejuruanIds.some(id => !mentorKejuruanIds.includes(id))) {
+      alert('Mentor hanya dapat membuat misi untuk kejuruan yang menjadi tanggung jawabnya.');
+      return;
+    }
+    const targetPrograms = targetKejuruanIds
+      .map(id => kejuruanList.find(k => k.id === id))
+      .filter((program): program is NonNullable<typeof program> => !!program);
+    if (!targetPrograms.length) {
+      alert('Program kejuruan target belum tersedia.');
+      return;
+    }
 
     if (editingMissionId) {
+      const assignedKj = targetPrograms[0];
       updateMission(editingMissionId, {
         title: formTitle,
         description: formDescription,
@@ -183,34 +274,47 @@ export const MissionManagementView: React.FC = () => {
         dueDate: formDueDate || '2026-10-31',
         submissionGuide: formSubmissionGuide,
         kejuruanId: assignedKj.id,
-        kejuruanName: assignedKj.name
+        kejuruanName: assignedKj.subPrograms?.includes(formKejuruanName) ? formKejuruanName : assignedKj.name
       });
       showToast('Misi kejuruan berhasil diperbarui!');
     } else {
-      addMission({
-        title: formTitle,
-        description: formDescription,
-        points: Number(formPoints),
-        difficulty: formDifficulty,
-        category: formCategory || 'Tugas Praktik',
-        dueDate: formDueDate || '2026-10-31',
-        submissionGuide: formSubmissionGuide,
-        kejuruanId: assignedKj.id,
-        kejuruanName: assignedKj.name,
-        mentorId: currentUser.id,
-        mentorName: currentUser.name,
-        status: 'active'
-      });
-      showToast('Misi baru berhasil diterbitkan untuk peserta!');
+      try {
+        for (const assignedKj of targetPrograms) await addMission({
+          title: formTitle,
+          description: formDescription,
+          points: Number(formPoints),
+          difficulty: formDifficulty,
+          category: formCategory || 'Tugas Praktik',
+          dueDate: formDueDate || '2026-10-31',
+          submissionGuide: formSubmissionGuide,
+          kejuruanId: assignedKj.id,
+          kejuruanName: assignedKj.subPrograms?.includes(formKejuruanName) ? formKejuruanName : assignedKj.name,
+          mentorId: currentUser.id,
+          mentorName: currentUser.name,
+          status: 'active'
+        });
+      } catch (error) {
+        showToast(error instanceof Error ? `Gagal menyimpan misi: ${error.message}` : 'Gagal menyimpan misi ke server.');
+        return;
+      }
+      showToast(!jwtToken
+        ? 'Misi tersimpan di browser ini saja. Login dengan koneksi server agar peserta dapat melihatnya.'
+        : targetPrograms.length > 1
+        ? `Misi ditambahkan untuk ${targetPrograms.length} kejuruan yang Anda bimbing.`
+        : 'Misi baru berhasil diterbitkan untuk peserta!');
     }
 
     setIsModalOpen(false);
   };
 
-  const handleDeleteMission = (id: string, title: string) => {
+  const handleDeleteMission = async (id: string, title: string) => {
     if (confirm(`Apakah Anda yakin ingin menghapus misi "${title}"?`)) {
-      deleteMission(id);
-      showToast('Misi berhasil dihapus.');
+      try {
+        await deleteMission(id);
+        showToast('Misi berhasil dihapus.');
+      } catch (error) {
+        showToast(error instanceof Error ? `Gagal menghapus misi: ${error.message}` : 'Gagal menghapus misi dari server.');
+      }
     }
   };
 
@@ -321,11 +425,12 @@ export const MissionManagementView: React.FC = () => {
               ? 'Kerjakan misi tantangan sesuai kejuruan Anda, kumpulkan poin, dan raih posisi teratas di Hall of Fame!'
               : 'Kelola dan monitor seluruh misi tantangan vokasi lintas kejuruan.'}
           </p>
+          <MobileHeaderStatus />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Action Button for Mentor / Admin */}
-          {(isMentor || isAdmin) && (
+          {isMentor && (
             <button
               onClick={handleOpenCreateModal}
               className="px-4 py-2 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
@@ -416,11 +521,9 @@ export const MissionManagementView: React.FC = () => {
               onChange={e => setSelectedKejuruanFilter(e.target.value)}
               className="text-xs py-1.5 px-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none"
             >
-              <option value="all">Semua Program Kejuruan</option>
-              {kejuruanList.map(k => (
-                <option key={k.id} value={k.id}>
-                  {k.code} - {k.name}
-                </option>
+              {(isAdmin || mentorKejuruanIds.length > 1 || mentorHasSubPrograms) && <option value="all">Semua Program Kejuruan</option>}
+              {getKejuruanFilterOptions(kejuruanList).filter(option => !isMentor || mentorKejuruanIds.includes(option.programId)).map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
           )}
@@ -664,7 +767,9 @@ export const MissionManagementView: React.FC = () => {
                           <div className="font-medium text-[#123B59] max-w-[200px] truncate">
                             {sub.missionTitle}
                           </div>
-                          <div className="text-[10px] text-[#A9C7DE]">{sub.submittedAt}</div>
+                          <div className="text-[10px] text-[#A9C7DE]">
+                            Dikirim {formatSubmissionDateTime(sub.submittedAt)}
+                          </div>
                         </td>
 
                         <td className="py-3 px-3">
@@ -754,14 +859,17 @@ export const MissionManagementView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveMission} className="p-5 space-y-4">
-              <div>
+              {isAdmin && <div>
                 <label className="block text-xs font-semibold text-[#123B59] mb-1">
                   Program Kejuruan Target
                 </label>
                 <select
                   value={formKejuruanId}
-                  onChange={e => setFormKejuruanId(e.target.value)}
-                  disabled={isMentor && !!currentUser.kejuruanId}
+                  onChange={e => {
+                    const selected = kejuruanList.find(program => program.id === e.target.value);
+                    setFormKejuruanId(e.target.value);
+                    setFormKejuruanName(selected?.subPrograms?.[0] || selected?.name || '');
+                  }}
                   className="w-full text-xs p-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none focus:ring-1 focus:ring-[#4C83B5]"
                 >
                   {kejuruanList.map(kj => (
@@ -770,7 +878,19 @@ export const MissionManagementView: React.FC = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div>}
+              {selectedFormKejuruan?.subPrograms?.length ? (
+                <div>
+                  <label className="block text-xs font-semibold text-[#123B59] mb-1">Kejuruan Smart Creative</label>
+                  <select
+                    value={formKejuruanName}
+                    onChange={e => setFormKejuruanName(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none focus:ring-1 focus:ring-[#4C83B5]"
+                  >
+                    {selectedFormKejuruan.subPrograms.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
+                </div>
+              ) : null}
 
               <div>
                 <label className="block text-xs font-semibold text-[#123B59] mb-1">

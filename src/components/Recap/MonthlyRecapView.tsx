@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import {
   FileSpreadsheet,
   FileText,
@@ -17,22 +18,17 @@ import {
 } from 'lucide-react';
 import { INDONESIAN_MONTHS, getTodayDateString } from '../../utils/dateUtils';
 import { computeMonthlyRecapData, exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { getMentorKejuruanIds } from '../../utils/mentorKejuruan';
+import { getKejuruanFilterOptions } from '../../utils/kejuruanCodes';
 
 export const MonthlyRecapView: React.FC = () => {
   const { users, kejuruanList, attendanceRecords, currentUser, dailyReports, setActiveTab } = useApp();
 
   const isTrainee = currentUser.role === 'trainee';
   const isMentor = currentUser.role === 'mentor';
-  const normalizedMentorName = currentUser.name.trim().toLowerCase();
-  const isDzikri = isMentor && /dzikri/.test(normalizedMentorName);
-  const dzikriProgramNames = [
-    'Pengoperasian Tools Generative AI untuk Konten Digital dan Bisnis',
-    'Pembuatan Konten Visual untuk Sosial Media',
-    'Optimalisasi Pemasaran Melalui Media Sosial'
-  ];
-  const mentorKejuruanIds = isDzikri
-    ? kejuruanList.filter(k => dzikriProgramNames.includes(k.name)).map(k => k.id)
-    : isMentor && currentUser.kejuruanId ? [currentUser.kejuruanId] : [];
+  const mentorKejuruanIds = getMentorKejuruanIds(currentUser, kejuruanList);
+  const kejuruanFilterOptions = getKejuruanFilterOptions(kejuruanList);
+  const isDzikri = isMentor && /dzikri/i.test(currentUser.name);
 
   const today = getTodayDateString();
   const [currentYear, currentMonth] = today.split('-').map(Number);
@@ -179,8 +175,8 @@ export const MonthlyRecapView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E4EAF0]">
-        <div>
+      <div className="flex flex-col items-start gap-3 pb-4 border-b border-[#E4EAF0]">
+        <div className="min-w-0 w-full">
           <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase">
             CATATAN KEHADIRAN & REKAPITULASI
           </p>
@@ -199,9 +195,10 @@ export const MonthlyRecapView: React.FC = () => {
               ? `Ringkasan kehadiran mandiri · Periode ${recapData.monthName} ${selectedYear} · ${currentUser.name} (${currentUser.nim || '-'})`
               : `Ringkasan Statistik Kehadiran Bulanan · Periode ${recapData.monthName} ${selectedYear} (${filteredSummaries.length} Peserta)`}
           </p>
+          <MobileHeaderStatus />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             onClick={handleExportExcel}
             className="surface px-3.5 py-2.5 rounded-xl border border-[#E4EAF0] hover:bg-[#F8FAFB] text-xs font-bold text-[#123B59] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
@@ -326,12 +323,10 @@ export const MonthlyRecapView: React.FC = () => {
               className="text-xs py-2 px-3 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5] max-w-xs"
             >
               {(currentUser.role === 'admin' || isDzikri) && <option value="all">{isDzikri ? 'Semua Program Smart Creative' : 'Semua Program Kejuruan'}</option>}
-              {kejuruanList
-                .filter(k => currentUser.role === 'admin' || mentorKejuruanIds.includes(k.id))
-                .map(k => (
-                  <option key={k.id} value={k.id}>
-                    {k.code} - {k.name}
-                  </option>
+              {kejuruanFilterOptions
+                .filter(option => currentUser.role === 'admin' || mentorKejuruanIds.includes(option.programId))
+                .map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
             </select>
           ) : (

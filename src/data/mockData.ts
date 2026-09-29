@@ -5,7 +5,7 @@ export const INITIAL_KEJURUAN: Kejuruan[] = [
   {
     id: 'kj-1',
     name: 'Pembuatan Sistem Informasi Pariwisata Berbasis Website',
-    code: 'SIP-01',
+    code: 'ST-04',
     category: 'Teknologi Informasi dan Pariwisata',
     color: '#2563eb', // blue
     description: 'Pembuatan sistem informasi pariwisata berbasis website.',
@@ -14,7 +14,7 @@ export const INITIAL_KEJURUAN: Kejuruan[] = [
   {
     id: 'kj-2',
     name: 'Pengembangan Web dengan Node.js dan React',
-    code: 'WEB-02',
+    code: 'WEB-04',
     category: 'Teknologi Informasi',
     color: '#8b5cf6', // purple
     description: 'Pengembangan aplikasi web menggunakan Node.js dan React.',
@@ -22,35 +22,22 @@ export const INITIAL_KEJURUAN: Kejuruan[] = [
   },
   {
     id: 'kj-3',
-    name: 'Pengoperasian Tools Generative AI untuk Konten Digital dan Bisnis',
-    code: 'SC-01',
+    name: 'Smart Creative',
+    code: 'SC-04',
     category: 'Smart Creative',
     color: '#059669', // emerald
-    description: 'Pengoperasian tools Generative AI untuk konten digital dan bisnis.',
-    mentorName: 'Mas Dzikri'
-  },
-  {
-    id: 'kj-4',
-    name: 'Pembuatan Konten Visual untuk Sosial Media',
-    code: 'SC-02',
-    category: 'Smart Creative',
-    color: '#d97706', // amber
-    description: 'Pembuatan konten visual untuk sosial media.',
-    mentorName: 'Mas Dzikri'
-  },
-  {
-    id: 'kj-5',
-    name: 'Optimalisasi Pemasaran Melalui Media Sosial',
-    code: 'SC-03',
-    category: 'Smart Creative',
-    color: '#e11d48', // rose
-    description: 'Optimalisasi pemasaran melalui media sosial.',
-    mentorName: 'Mas Dzikri'
+    description: 'Program gabungan Generative AI, konten visual, dan pemasaran media sosial.',
+    mentorName: 'Mas Dzikri',
+    subPrograms: [
+      'Pengoperasian Tools Generative AI untuk Konten Digital dan Bisnis',
+      'Pembuatan Konten Visual untuk Sosial Media',
+      'Optimalisasi Pemasaran Melalui Media Sosial',
+    ]
   },
   {
     id: 'kj-6',
     name: 'Pemasangan Sistem Integrasi Bangunan Cerdas',
-    code: 'SIBC-06',
+    code: 'SB-04',
     category: 'Teknologi Bangunan Cerdas',
     color: '#0891b2',
     description: 'Pemasangan sistem integrasi bangunan cerdas.',

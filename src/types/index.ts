@@ -13,6 +13,7 @@ export interface Kejuruan {
   description: string;
   mentorId?: string;
   mentorName?: string;
+  subPrograms?: string[];
 }
 
 export interface User {

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import {
   Users,
   UserPlus,
@@ -73,6 +74,7 @@ export const TraineeManagementView: React.FC = () => {
   const [newUserName, setNewUserName] = useState('');
   const [newUserNim, setNewUserNim] = useState('');
   const [newUserKejuruanId, setNewUserKejuruanId] = useState(kejuruanList[0]?.id || '');
+  const [newUserKejuruanName, setNewUserKejuruanName] = useState(kejuruanList[0]?.name || '');
   const [newUserRole, setNewUserRole] = useState<'trainee' | 'mentor'>('trainee');
   const [newUserPassword, setNewUserPassword] = useState(generateDefaultPassword());
 
@@ -167,6 +169,7 @@ export const TraineeManagementView: React.FC = () => {
     setNewUserPassword(generateDefaultPassword());
     setNewUserName('');
     setNewUserKejuruanId(kejuruanList[0]?.id || '');
+    setNewUserKejuruanName(kejuruanList[0]?.name || '');
     setIsAddUserModalOpen(true);
   };
 
@@ -197,7 +200,7 @@ export const TraineeManagementView: React.FC = () => {
       role: newUserRole,
       nim: newUserNim,
       kejuruanId: newUserKejuruanId,
-      kejuruanName: kj?.name || '',
+      kejuruanName: kj?.subPrograms?.includes(newUserKejuruanName) ? newUserKejuruanName : kj?.name || '',
       phone: '',
       loginCode: newUserNim,
       password: newUserPassword,
@@ -356,7 +359,7 @@ export const TraineeManagementView: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#E4EAF0]">
+      <div className="flex flex-col lg:items-start gap-4 pb-4 border-b border-[#E4EAF0]">
         <div>
           <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase">
             ADMINISTRASI & MANAJEMEN AKUN
@@ -364,10 +367,11 @@ export const TraineeManagementView: React.FC = () => {
           <h1 className="mt-1 text-2xl lg:text-3xl font-bold tracking-tight text-[#123B59]">
             Kelola Akun Peserta & Instruktur
           </h1>
+          <MobileHeaderStatus />
         </div>
 
         {/* Action Buttons: Add, Export, Import, Kejuruan, and Clear All */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2">
           {currentUser?.role === 'admin' && (
             <button
               onClick={() => handleOpenClearModal()}
@@ -722,7 +726,11 @@ export const TraineeManagementView: React.FC = () => {
                 <label className="block text-[#123B59] font-bold mb-1">Program Kejuruan</label>
                 <select
                   value={newUserKejuruanId}
-                  onChange={e => setNewUserKejuruanId(e.target.value)}
+                  onChange={e => {
+                    const selected = kejuruanList.find(program => program.id === e.target.value);
+                    setNewUserKejuruanId(e.target.value);
+                    setNewUserKejuruanName(selected?.subPrograms?.[0] || selected?.name || '');
+                  }}
                   className="w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-semibold"
                 >
                   {kejuruanList.map(k => (
@@ -731,6 +739,17 @@ export const TraineeManagementView: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {kejuruanList.find(program => program.id === newUserKejuruanId)?.subPrograms?.length ? (
+                  <select
+                    value={newUserKejuruanName}
+                    onChange={e => setNewUserKejuruanName(e.target.value)}
+                    className="mt-2 w-full p-2.5 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-semibold"
+                  >
+                    {kejuruanList.find(program => program.id === newUserKejuruanId)?.subPrograms?.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                ) : null}
               </div>
 
               {/* 8-Digit Login Code & Password generation box */}

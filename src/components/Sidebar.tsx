@@ -22,6 +22,7 @@ import {
   Check
 } from 'lucide-react';
 import { INDONESIAN_DAYS, INDONESIAN_MONTHS, getTodayDateString } from '../utils/dateUtils';
+import { getMentorKejuruanIds } from '../utils/mentorKejuruan';
 import psaLogo from '../assets/2D PSA LOGO.png';
 import { ThemePreference, useTheme } from '../context/ThemeContext';
 
@@ -36,6 +37,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const {
     currentUser,
+    users,
+    kejuruanList,
     activeTab,
     setActiveTab,
     leaveRequests,
@@ -86,17 +89,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [mobileOpen]);
 
   const todayStr = getTodayDateString();
+  const mentorKejuruanIds = getMentorKejuruanIds(currentUser, kejuruanList);
+  const mentorProgramNames = kejuruanList
+    .filter(program => mentorKejuruanIds.includes(program.id))
+    .map(program => program.name.trim().toLowerCase());
+  const mentorTraineeIds = new Set(users
+    .filter(user => user.role === 'trainee' && (
+      mentorKejuruanIds.includes(user.kejuruanId || '') ||
+      mentorProgramNames.includes(user.kejuruanName?.trim().toLowerCase() || '')
+    ))
+    .map(user => user.id));
 
   // Pending counts
   const pendingLeavesCount = leaveRequests.filter(l => {
     if (currentUser.role === 'admin') return l.status === 'pending';
-    if (currentUser.role === 'mentor') return l.status === 'pending' && l.kejuruanId === currentUser.kejuruanId;
+    if (currentUser.role === 'mentor') return l.status === 'pending' && mentorKejuruanIds.includes(l.kejuruanId);
     return false;
   }).length;
 
   const pendingMissionsCount = missionSubmissions.filter(s => {
     if (currentUser.role === 'admin') return s.status === 'pending';
-    if (currentUser.role === 'mentor') return s.status === 'pending' && s.kejuruanId === currentUser.kejuruanId;
+    if (currentUser.role === 'mentor') return s.status === 'pending' && mentorKejuruanIds.includes(s.kejuruanId);
     return false;
   }).length;
 
@@ -107,7 +120,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const pendingTraineeVerifications = attendanceRecords.filter(r => {
     return (
       r.date === todayStr &&
-      r.kejuruanId === currentUser.kejuruanId &&
+      (mentorKejuruanIds.includes(r.kejuruanId) ||
+        mentorProgramNames.includes(r.kejuruanName?.trim().toLowerCase() || '') ||
+        mentorTraineeIds.has(r.userId)) &&
       (r.userRole === 'trainee' || !r.userRole) &&
       r.verificationStatus === 'pending'
     );
@@ -115,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const pendingDailyReportsCount = dailyReports.filter(r => {
     if (currentUser.role === 'admin') return r.status === 'pending';
-    if (currentUser.role === 'mentor') return r.status === 'pending' && r.kejuruanId === currentUser.kejuruanId;
+    if (currentUser.role === 'mentor') return r.status === 'pending' && mentorKejuruanIds.includes(r.kejuruanId);
     return false;
   }).length;
 
@@ -266,9 +281,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+        <div className="mt-3 flex flex-col items-start gap-1.5 border-t border-white/10 pt-3">
           <span className="text-[9px] font-bold tracking-[.13em] text-[#A9C7DE]">PERAN AKTIF</span>
-          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white">
+          <span className="inline-flex whitespace-nowrap rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white">
             {roleLabel}
           </span>
         </div>
@@ -366,17 +381,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </aside>
 
       {/* Mobile Drawer Overlay */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div
-            className="fixed inset-0 bg-[#0D2F47]/60 backdrop-blur-xs transition-opacity"
-            onClick={onCloseMobile}
-          />
-          <div className="relative z-10 h-full w-[min(300px,calc(100vw-2rem))] shadow-2xl">
-            {sidebarInner}
-          </div>
+      <div
+        className={`mobile-drawer lg:hidden fixed inset-0 z-50 flex ${mobileOpen ? 'is-open' : ''}`}
+        aria-hidden={!mobileOpen}
+      >
+        <div
+          className="mobile-drawer-backdrop fixed inset-0"
+          onClick={onCloseMobile}
+        />
+        <div className="mobile-drawer-panel relative z-10 h-full w-[min(300px,calc(100vw-2rem))] overflow-hidden rounded-r-3xl shadow-2xl">
+          {sidebarInner}
         </div>
-      )}
+      </div>
     </>
   );
 };

@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { User, AttendanceRecord, Kejuruan } from '../types';
 import { INDONESIAN_MONTHS, getDatesForMonth, getDaysInMonth, isWeekend } from './dateUtils';
+import { matchesKejuruanFilter, getKejuruanFilterOptions } from './kejuruanCodes';
  
 interface ExportParams {
   year: number;
@@ -39,17 +40,9 @@ export function computeMonthlyRecapData(params: ExportParams): {
   const dates = getDatesForMonth(year, month);
 
   // Filter trainees by selected Kejuruan
-  const filteredTrainees = trainees.filter(t => {
-    if (selectedKejuruanId === 'all') return true;
-    if (selectedKejuruanId === 'smart-creative') {
-      const program = kejuruanList.find(k => k.id === t.kejuruanId);
-      return !!program && (program.category === 'Smart Creative' ||
-        program.name.includes('Generative AI') ||
-        program.name.includes('Konten Visual untuk Sosial Media') ||
-        program.name.includes('Optimalisasi Pemasaran Melalui Media Sosial'));
-    }
-    return t.kejuruanId === selectedKejuruanId;
-  });
+  const filteredTrainees = trainees.filter(t =>
+    matchesKejuruanFilter(selectedKejuruanId, kejuruanList, t.kejuruanId, t.kejuruanName)
+  );
 
   // Calculate working days in the month (excluding weekends)
   let workingDaysCount = 0;
@@ -59,15 +52,14 @@ export function computeMonthlyRecapData(params: ExportParams): {
     }
   });
 
-  const kejuruanObj = kejuruanList.find(k => k.id === selectedKejuruanId);
+  const selectedOption = getKejuruanFilterOptions(kejuruanList).find(option => option.value === selectedKejuruanId);
+  const kejuruanObj = kejuruanList.find(k => k.id === (selectedOption?.programId || selectedKejuruanId));
   const kejuruanName =
     selectedKejuruanId === 'all'
       ? trainees.length === 1 && trainees[0].kejuruanName
         ? trainees[0].kejuruanName
         : 'Semua Kejuruan'
-      : selectedKejuruanId === 'smart-creative'
-      ? 'Smart Creative'
-      : kejuruanObj?.name || 'Kejuruan';
+      : selectedOption?.name || kejuruanObj?.name || 'Kejuruan';
 
   // Compute stats per trainee
   const summaries: TraineeRecapSummary[] = filteredTrainees.map(trainee => {
@@ -281,7 +273,7 @@ export function exportToPDF(params: ExportParams): void {
   });
 
   // Header Banner styling
-  doc.setFillColor(37, 99, 235); // Blue 600
+  doc.setFillColor(13, 47, 71); // #0D2F47
   doc.rect(0, 0, 297, 18, 'F');
 
   // Title
@@ -394,8 +386,7 @@ export function exportToPDF(params: ExportParams): void {
     doc.text('Disahkan Oleh,', 210, finalY);
     doc.text('Koordinator Program Pelatihan', 210, finalY + 5);
     doc.line(210, finalY + 25, 265, finalY + 25);
-    doc.text('Bambang Sudirman, M.Kom', 210, finalY + 29);
-    doc.text('NIP. 19820514 200801 1 002', 210, finalY + 33);
+    doc.text('Abdul Rozzak Junaidi', 210, finalY + 29);
   }
 
   // Footer notes & page number

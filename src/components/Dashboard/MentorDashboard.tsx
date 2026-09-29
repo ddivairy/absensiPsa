@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Users,
@@ -18,6 +18,7 @@ import {
 import { getTodayDateString, formatIndonesianDate, getCurrentTimeWIB } from '../../utils/dateUtils';
 import { AttendanceStatus } from '../../types';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { getMentorKejuruanIds } from '../../utils/mentorKejuruan';
 
 export const MentorDashboard: React.FC = () => {
   const {
@@ -25,6 +26,8 @@ export const MentorDashboard: React.FC = () => {
     users,
     kejuruanList,
     attendanceRecords,
+    refreshUsers,
+    refreshAttendanceRecords,
     leaveRequests,
     settings,
     clockIn,
@@ -42,9 +45,56 @@ export const MentorDashboard: React.FC = () => {
   const [mentorNote, setMentorNote] = useState<string>('');
 
   // Mentor's assigned kejuruan
+  const mentorKejuruanIds = useMemo(
+    () => getMentorKejuruanIds(currentUser, kejuruanList),
+    [currentUser, kejuruanList]
+  );
+  const mentorRosterKejuruanIds = useMemo(() => [...new Set([
+    ...mentorKejuruanIds,
+    ...(currentUser.kejuruanId ? [currentUser.kejuruanId] : []),
+  ])], [mentorKejuruanIds, currentUser.kejuruanId]);
+  const normalizeProgramName = (name?: string) => name?.trim().toLowerCase().replace(/\s+/g, ' ');
+  const mentorProgramNames = useMemo(() => [...new Set([
+    ...kejuruanList.filter(program => mentorKejuruanIds.includes(program.id)).map(program => program.name),
+    ...(currentUser.kejuruanName ? [currentUser.kejuruanName] : []),
+    ...(currentUser.name.toLowerCase().includes('fadil') ? ['Pengembangan Web dengan Node.js dan React'] : []),
+    ...(currentUser.name.toLowerCase().includes('davy') ? ['Pemasangan Sistem Integrasi Bangunan Cerdas'] : []),
+    ...(currentUser.name.toLowerCase().includes('ayu') || currentUser.name.toLowerCase().includes('vanesha') ? ['Pembuatan Sistem Informasi Pariwisata Berbasis Website'] : []),
+    ...(currentUser.name.toLowerCase().includes('dzikri') ? [
+      'Pengoperasian Tools Generative AI untuk Konten Digital dan Bisnis',
+      'Pembuatan Konten Visual untuk Sosial Media',
+      'Optimalisasi Pemasaran Melalui Media Sosial',
+    ] : []),
+  ])]
+    .map(name => normalizeProgramName(name))
+    .filter((name): name is string => !!name), [kejuruanList, mentorKejuruanIds, currentUser.kejuruanName, currentUser.name]);
+
+  useEffect(() => {
+    const refresh = () => {
+      void refreshAttendanceRecords();
+      void refreshUsers();
+    };
+    refresh();
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 15000);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.clearInterval(timer);
+    };
+  }, [currentUser.id, refreshAttendanceRecords, refreshUsers]);
+
+  const belongsToMentor = (kejuruanId?: string, kejuruanName?: string) => {
+    const programName = normalizeProgramName(kejuruanName) || '';
+    const matchesProgramName = mentorProgramNames.some(name =>
+      name === programName || (!!programName && (name.includes(programName) || programName.includes(name)))
+    );
+    return mentorRosterKejuruanIds.includes(kejuruanId || '') || matchesProgramName;
+  };
   const mentorKejuruan = useMemo(() => {
-    return kejuruanList.find(k => k.id === currentUser.kejuruanId) || kejuruanList[0];
-  }, [kejuruanList, currentUser.kejuruanId]);
+    const firstProgram = kejuruanList.find(k => k.id === mentorKejuruanIds[0]) || kejuruanList[0];
+    if (mentorKejuruanIds.length < 2 || !firstProgram) return firstProgram;
+    return { ...firstProgram, id: 'smart-creative', name: 'Smart Creative', code: 'SC-04' };
+  }, [kejuruanList, mentorKejuruanIds]);
 
   // Mentor's own today attendance record (verified by Admin)
   const myMentorRecord = getTodayRecordForUser(currentUser.id);
@@ -53,13 +103,16 @@ export const MentorDashboard: React.FC = () => {
 
   // Trainees in this mentor's class
   const classTrainees = useMemo(() => {
-    return users.filter(u => u.role === 'trainee' && u.kejuruanId === mentorKejuruan.id);
-  }, [users, mentorKejuruan.id]);
+    return users.filter(u => u.role === 'trainee' && belongsToMentor(u.kejuruanId, u.kejuruanName));
+  }, [users, mentorRosterKejuruanIds, mentorProgramNames]);
 
   // Trainee today records for this class
   const classTodayRecords = useMemo(() => {
-    return attendanceRecords.filter(r => r.date === today && r.kejuruanId === mentorKejuruan.id && r.userRole !== 'mentor');
-  }, [attendanceRecords, today, mentorKejuruan.id]);
+    const classTraineeIds = new Set(classTrainees.map(trainee => trainee.id));
+    return attendanceRecords.filter(r => r.date === today && r.userRole !== 'mentor' && (
+      classTraineeIds.has(r.userId) || belongsToMentor(r.kejuruanId, r.kejuruanName)
+    ));
+  }, [attendanceRecords, today, classTrainees, mentorRosterKejuruanIds, mentorProgramNames]);
 
   // Class stats
   const stats = useMemo(() => {
@@ -94,14 +147,14 @@ export const MentorDashboard: React.FC = () => {
   };
 
   // Mentor self check-in
-  const handleMentorClockIn = () => {
-    const res = clockIn(mentorNote || 'Hadir memfasilitasi pelatihan kelas kejuruan');
+  const handleMentorClockIn = async () => {
+    const res = await clockIn(mentorNote || 'Hadir memfasilitasi pelatihan kelas kejuruan');
     showToast(res.message);
   };
 
   // Mentor self check-out
-  const handleMentorClockOut = () => {
-    const res = clockOut('Sesi pelatihan kejuruan hari ini selesai');
+  const handleMentorClockOut = async () => {
+    const res = await clockOut('Sesi pelatihan kejuruan hari ini selesai');
     showToast(res.message);
   };
 
@@ -400,7 +453,7 @@ export const MentorDashboard: React.FC = () => {
                           {record.status}
                         </span>
                       ) : (
-                        <span className="rounded-full px-2.5 py-1 text-[10px] font-bold bg-[#F4F6F8] text-[#6F7F8D]">
+                        <span className="inline-flex whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-bold bg-[#F4F6F8] text-[#6F7F8D]">
                           Belum Absen
                         </span>
                       )}

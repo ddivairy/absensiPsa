@@ -8,12 +8,11 @@ export const INDONESIAN_DAYS = [
 ];
 
 export function getTodayDateString(): string {
-  // Use today's date formatted as YYYY-MM-DD
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 export function formatIndonesianDate(dateStr: string): string {
@@ -40,11 +39,9 @@ export function formatShortDate(dateStr: string): string {
 }
 
 export function getCurrentTimeWIB(): string {
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+  }).format(new Date());
 }
 
 export function getDaysInMonth(year: number, month: number): number {
