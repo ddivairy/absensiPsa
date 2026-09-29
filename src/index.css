@@ -31,16 +31,34 @@
    We scale only font-size via explicit overrides below. ── */
 html {
   font-size: 16px;
+  min-width: 320px;
 }
 
 body {
   margin: 0;
+  min-width: 320px;
+  overflow-x: clip;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 1rem;        /* 16px — comfortable body text */
   line-height: 1.6;
   color: var(--navy);
   background-color: var(--canvas);
   -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+main,
+main > * {
+  min-width: 0;
+}
+
+.overflow-x-auto {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
 }
 
 button, input, textarea, select {
@@ -186,6 +204,45 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .055em;
+  white-space: nowrap;
+}
+
+.mobile-brand-header {
+  min-height: 42px;
+}
+
+.mobile-brand-lockup {
+  flex: 0 1 auto;
+}
+
+.mobile-brand-logo {
+  display: block;
+  width: 38px;
+  height: 41px;
+  flex: none;
+  object-fit: contain;
+}
+
+.mobile-brand-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.mobile-brand-copy strong {
+  color: var(--navy);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.mobile-brand-copy small {
+  margin-top: 4px;
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .025em;
   white-space: nowrap;
 }
 
@@ -373,4 +430,27 @@ html[data-theme='dark'] ::-webkit-scrollbar-thumb { background: #385166; }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #A9C7DE;
+}
+
+/* ── Responsive layout safeguards ──────────────────────────────────────── */
+.mobile-bottom-nav {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 639px) {
+  .fixed.inset-0 > .surface {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  input,
+  textarea,
+  select {
+    max-width: 100%;
+  }
+
+  .mobile-nav-item {
+    min-height: 44px;
+  }
 }

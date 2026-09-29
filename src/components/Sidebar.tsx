@@ -72,6 +72,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCloseMobile();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [mobileOpen]);
+
   const todayStr = getTodayDateString();
   const mentorKejuruanIds = getMentorKejuruanIds(currentUser, kejuruanList);
   const mentorProgramNames = kejuruanList
@@ -167,7 +183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarInner = (
-    <div className="flex flex-col h-full bg-[#123B59] text-white p-5 select-none w-[240px] overflow-y-auto sidebar-inner">
+    <div className="sidebar-inner flex h-full w-full min-w-0 select-none flex-col overflow-y-auto bg-[#123B59] p-5 text-white">
       {/* Brand Header */}
       <div className="relative flex items-start px-1">
         <button
@@ -371,7 +387,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="fixed inset-0 bg-[#0D2F47]/60 backdrop-blur-xs transition-opacity"
             onClick={onCloseMobile}
           />
-          <div className="relative z-10 h-full shadow-2xl">
+          <div className="relative z-10 h-full w-[min(300px,calc(100vw-2rem))] shadow-2xl">
             {sidebarInner}
           </div>
         </div>

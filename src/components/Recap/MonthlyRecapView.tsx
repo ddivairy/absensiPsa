@@ -372,8 +372,8 @@ export const MonthlyRecapView: React.FC = () => {
 
       {/* Trainee Privacy Banner */}
       {isTrainee && (
-        <div className="p-3.5 bg-[#EEF6FB] border border-[#C8DCEB] rounded-2xl flex items-center justify-between text-xs text-[#123B59]">
-          <div className="flex items-center gap-2.5">
+        <div className="p-3.5 bg-[#EEF6FB] border border-[#C8DCEB] rounded-2xl flex flex-col items-start gap-2 text-xs text-[#123B59] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2.5">
             <Sparkles className="w-4 h-4 text-[#4C83B5] shrink-0" />
             <span>
               Menampilkan rekapitulasi kehadiran pribadi Anda (<strong>{currentUser.name}</strong>). Data peserta lain terlindungi privasinya.

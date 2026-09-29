@@ -15,6 +15,7 @@ import { MissionManagementView } from './components/Missions/MissionManagementVi
 import { HallOfFameView } from './components/HallOfFame/HallOfFameView';
 import { MentorHallOfFameView } from './components/HallOfFame/MentorHallOfFameView';
 import { DailyReportView } from './components/DailyReport/DailyReportView';
+import psaLogo from './assets/2D PSA LOGO.png';
 import {
   Menu,
   Clock,
@@ -145,23 +146,21 @@ const MainLayout: React.FC = () => {
               : 'relative z-10 mb-0 h-0 overflow-visible lg:mb-0 lg:h-0'
           }`}
         >
-          <div className="flex items-center justify-between lg:block">
+          <div className="flex min-w-0 flex-col gap-3 lg:block">
             {/* Mobile Brand with Hamburger */}
-            <div className="lg:hidden flex items-center gap-2.5">
+            <div className="mobile-brand-header lg:hidden flex min-w-0 items-center gap-2">
               <button
                 onClick={() => setMobileSidebarOpen(true)}
-                className="p-2 rounded-xl bg-white border border-[#E4EAF0] text-[#123B59] hover:bg-[#F8FAFB] transition cursor-pointer"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-[#E4EAF0] text-[#123B59] hover:bg-[#F8FAFB] transition cursor-pointer"
                 aria-label="Buka Menu Navigasi"
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="h-5 w-5" />
               </button>
-              <div className="flex items-center gap-2">
-                <svg className="h-8 w-7" viewBox="0 0 50 58" aria-hidden="true">
-                  <path d="M4 3h42v32c0 10-9 16-21 21C13 51 4 45 4 35V3Z" fill="#123B59" />
-                  <path d="M16 15c4-3 7 1 9 3 2-2 5-6 9-3v8c-3-2-6-2-9 0-3-2-6-2-9 0v-8Z" fill="#fff" />
-                </svg>
-                <span className="font-bold tracking-tight text-[#123B59]">
-                  PSA <span className="font-medium text-[#4C83B5]">Punya Skill Akademi</span>
+              <div className="mobile-brand-lockup flex min-w-0 items-center gap-2">
+                <img src={psaLogo} alt="" className="mobile-brand-logo" />
+                <span className="mobile-brand-copy">
+                  <strong>PSA</strong>
+                  <small>Punya Skill Akademi</small>
                 </span>
               </div>
             </div>
@@ -183,7 +182,7 @@ const MainLayout: React.FC = () => {
 
           {/* Current time and authenticated role */}
           <div
-            className={`surface flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ${
+            className={`surface flex w-fit max-w-full flex-wrap items-center gap-3 self-start rounded-2xl px-3.5 py-2.5 sm:self-end lg:flex-nowrap lg:self-auto ${
               showAttendanceHeader ? '' : 'lg:absolute lg:right-0 lg:top-0'
             }`}
           >
@@ -205,7 +204,7 @@ const MainLayout: React.FC = () => {
         </header>
 
         {/* Page Content View */}
-        <main className="flex-1 w-full">{renderContent()}</main>
+        <main className="min-w-0 w-full flex-1">{renderContent()}</main>
 
         {/* Footer */}
         <footer className="mt-10 pt-4 border-t border-[#E4EAF0] text-xs text-[#6F7F8D] flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -215,7 +214,7 @@ const MainLayout: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar (from style.html) */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 z-30 w-full border-t border-[#E4EAF0] bg-white/95 px-3 pb-3 pt-2 backdrop-blur-md"
+        className="mobile-bottom-nav lg:hidden fixed bottom-0 left-0 z-30 w-full border-t border-[#E4EAF0] bg-white/95 px-3 pt-2 backdrop-blur-md"
         aria-label="Navigasi mobile"
       >
         <div className="grid grid-cols-4 gap-1 text-center">

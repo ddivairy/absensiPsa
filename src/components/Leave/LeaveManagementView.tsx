@@ -309,9 +309,9 @@ export const LeaveManagementView: React.FC = () => {
 
                 return (
                   <article key={leave.id} className="surface soft-hover rounded-xl p-4 border border-[#E4EAF0]">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-bold text-[#123B59]">
                             {formatIndonesianDate(leave.startDate)} {leave.startDate !== leave.endDate && `s/d ${formatIndonesianDate(leave.endDate)}`}
                           </p>
@@ -339,7 +339,7 @@ export const LeaveManagementView: React.FC = () => {
                         )}
                       </div>
 
-                      <span className={`h-fit rounded-full px-2.5 py-1 text-[10px] font-bold shrink-0 ${badgeStyle}`}>
+                      <span className={`h-fit self-start rounded-full px-2.5 py-1 text-[10px] font-bold shrink-0 ${badgeStyle}`}>
                         {badgeLabel}
                       </span>
                     </div>

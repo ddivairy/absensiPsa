@@ -508,8 +508,8 @@ export const DailyReportView: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="surface rounded-2xl p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] sm:max-w-xs">
+      <div className="surface rounded-2xl p-3 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
+        <div className="relative min-w-0 flex-1 sm:min-w-[200px] sm:max-w-xs">
           <Search className="w-3.5 h-3.5 text-[#A9C7DE] absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -544,7 +544,7 @@ export const DailyReportView: React.FC = () => {
           </select>
         )}
 
-        <div className="text-[11px] text-[#6F7F8D] self-center whitespace-nowrap">
+        <div className="text-[11px] text-[#6F7F8D] self-start whitespace-nowrap sm:ml-auto sm:self-center">
           {relevantReports.length} laporan
         </div>
       </div>

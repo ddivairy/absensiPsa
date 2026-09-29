@@ -420,7 +420,7 @@ export const TraineeManagementView: React.FC = () => {
       {/* Role Filter Tabs Strip */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 bg-[#F4F6F8] p-1 rounded-xl border border-[#E4EAF0]">
+          <div className="flex flex-wrap items-center gap-1 bg-[#F4F6F8] p-1 rounded-xl border border-[#E4EAF0]">
             <button
               type="button"
               onClick={() => setActiveRoleFilter('all')}
@@ -488,12 +488,12 @@ export const TraineeManagementView: React.FC = () => {
 
       {/* Filter and Search Bar */}
       <div className="surface p-4 rounded-2xl border border-[#E4EAF0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <span className="text-xs font-bold text-[#123B59]">Filter Kejuruan:</span>
           <select
             value={selectedKejuruan}
             onChange={e => setSelectedKejuruan(e.target.value)}
-            className="text-xs py-2 px-3 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5]"
+            className="max-w-full text-xs py-2 px-3 rounded-xl border border-[#E4EAF0] bg-[#F8FAFB] text-[#123B59] font-bold outline-none focus:border-[#4C83B5]"
           >
             <option value="all">Semua Program Kejuruan</option>
             {userKejuruanOptions.map(program => (
