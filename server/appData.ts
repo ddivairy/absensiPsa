@@ -193,6 +193,10 @@ appDataRouter.get('/', authenticateToken, async (req: AuthenticatedRequest, res:
     const attendanceRows = scopedAttendanceRows;
     const submissionRows = scopedSubmissionRows;
     const setting = settingRows[0][0];
+    const officeLocation = setting
+      ? typeof setting.office_location === 'string' ? JSON.parse(setting.office_location) : setting.office_location
+      : null;
+    const legacyOfficePin = officeLocation?.lat === -6.921024681282541 && officeLocation?.lng === 107.6750205521894;
     return res.json({
       success: true,
       kejuruanList: kejuruanRows.map(mapKejuruan),
@@ -205,11 +209,55 @@ appDataRouter.get('/', authenticateToken, async (req: AuthenticatedRequest, res:
         startTime: setting.start_time, lateLimitTime: setting.late_limit_time, endTime: setting.end_time,
         allowCheckoutStart: setting.allow_checkout_start,
         workDays: typeof setting.work_days === 'string' ? JSON.parse(setting.work_days) : setting.work_days,
-        officeLocation: typeof setting.office_location === 'string' ? JSON.parse(setting.office_location) : setting.office_location,
+        officeLocation: legacyOfficePin ? {
+          ...officeLocation,
+          lat: -6.921045982595817,
+          lng: 107.67498836568335,
+        } : officeLocation,
       } : null,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: 'Gagal memuat data aplikasi dari TiDB.', error: error.message });
+  }
+});
+
+appDataRouter.put('/settings', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Hanya admin yang dapat mengubah pengaturan lokasi presensi.' });
+  }
+
+  const settings = req.body || {};
+  const location = settings.officeLocation || {};
+  const lat = Number(location.lat);
+  const lng = Number(location.lng);
+  const radiusMeters = Number(location.radiusMeters);
+  if (
+    typeof settings.startTime !== 'string' || !settings.startTime ||
+    typeof settings.lateLimitTime !== 'string' || !settings.lateLimitTime ||
+    typeof settings.endTime !== 'string' || !settings.endTime ||
+    typeof settings.allowCheckoutStart !== 'string' || !settings.allowCheckoutStart ||
+    !Array.isArray(settings.workDays) || typeof location.name !== 'string' || !location.name.trim() ||
+    !Number.isFinite(lat) || lat < -90 || lat > 90 ||
+    !Number.isFinite(lng) || lng < -180 || lng > 180 ||
+    !Number.isFinite(radiusMeters) || radiusMeters < 10 || radiusMeters > 5000
+  ) {
+    return res.status(400).json({ success: false, message: 'Pengaturan jam atau koordinat lokasi tidak valid.' });
+  }
+
+  try {
+    await getPool().query(
+      `INSERT INTO attendance_settings (id,start_time,late_limit_time,end_time,allow_checkout_start,work_days,office_location,updated_by)
+       VALUES ('global',?,?,?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE start_time=VALUES(start_time),late_limit_time=VALUES(late_limit_time),
+       end_time=VALUES(end_time),allow_checkout_start=VALUES(allow_checkout_start),work_days=VALUES(work_days),
+       office_location=VALUES(office_location),updated_by=VALUES(updated_by)`,
+      [settings.startTime, settings.lateLimitTime, settings.endTime, settings.allowCheckoutStart,
+        JSON.stringify(settings.workDays), JSON.stringify({ ...location, lat, lng, radiusMeters }), req.user.id]
+    );
+    return res.json({ success: true, message: 'Pengaturan lokasi presensi berhasil disimpan.' });
+  } catch (error: any) {
+    console.error('[Attendance Settings Save Error]', error);
+    return res.status(500).json({ success: false, message: 'Pengaturan lokasi presensi gagal disimpan ke database.' });
   }
 });
 
@@ -426,12 +474,6 @@ appDataRouter.put('/', authenticateToken, async (req: AuthenticatedRequest, res:
         : 'description=VALUES(description),photo_url=VALUES(photo_url),photo_name=VALUES(photo_name),submission_link=VALUES(submission_link),status=VALUES(status),reviewed_by=VALUES(reviewed_by),reviewed_at=VALUES(reviewed_at),review_notes=VALUES(review_notes)';
       await upsert(`INSERT INTO daily_reports (id,trainee_id,trainee_name,trainee_nim,trainee_avatar,kejuruan_id,kejuruan_name,report_date,description,photo_url,photo_name,submission_link,status,submitted_at,reviewed_by,reviewed_at,review_notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE ${reviewUpdate}`,
       [r.id,r.traineeId,r.traineeName,r.traineeNim,r.traineeAvatar || null,r.kejuruanId || null,r.kejuruanName || null,dateValue(r.date),r.description,r.photoUrl || null,r.photoName || null,r.submissionLink || null,user.role === 'trainee' ? 'pending' : r.status,dateTimeValue(r.submittedAt),user.role === 'trainee' ? null : r.reviewedBy || null,user.role === 'trainee' ? null : dateTimeValue(r.reviewedAt),user.role === 'trainee' ? null : r.reviewNotes || null]);
-    }
-
-    if (user.role === 'admin' && body.settings) {
-      const s = body.settings;
-      await upsert(`INSERT INTO attendance_settings (id,start_time,late_limit_time,end_time,allow_checkout_start,work_days,office_location,updated_by) VALUES ('global',?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE start_time=VALUES(start_time),late_limit_time=VALUES(late_limit_time),end_time=VALUES(end_time),allow_checkout_start=VALUES(allow_checkout_start),work_days=VALUES(work_days),office_location=VALUES(office_location),updated_by=VALUES(updated_by)`,
-      [s.startTime,s.lateLimitTime,s.endTime,s.allowCheckoutStart,JSON.stringify(s.workDays),JSON.stringify(s.officeLocation),user.id]);
     }
 
     await connection.commit();

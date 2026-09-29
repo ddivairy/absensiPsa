@@ -214,6 +214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       const parsed = JSON.parse(saved) as AttendanceSettings;
+      const legacyOfficePin = parsed.officeLocation?.lat === -6.921024681282541 && parsed.officeLocation?.lng === 107.6750205521894;
       const legacyJakartaPin = parsed.officeLocation?.lat === -6.2088 && parsed.officeLocation?.lng === 106.8456;
       return {
         ...INITIAL_SETTINGS,
@@ -221,7 +222,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         officeLocation: {
           ...INITIAL_SETTINGS.officeLocation,
           ...parsed.officeLocation,
-          ...(legacyJakartaPin ? {
+          ...(legacyOfficePin || legacyJakartaPin ? {
             lat: INITIAL_SETTINGS.officeLocation.lat,
             lng: INITIAL_SETTINGS.officeLocation.lng
           } : {})
@@ -291,7 +292,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setMissions(data.missions);
         setMissionSubmissions(data.missionSubmissions);
         setDailyReports(data.dailyReports);
-        if (data.settings) setSettings(data.settings);
+        if (data.settings) {
+          const officeLocation = data.settings.officeLocation;
+          const legacyOfficePin = officeLocation?.lat === -6.921024681282541 && officeLocation?.lng === 107.6750205521894;
+          setSettings(legacyOfficePin ? {
+            ...data.settings,
+            officeLocation: {
+              ...officeLocation,
+              lat: INITIAL_SETTINGS.officeLocation.lat,
+              lng: INITIAL_SETTINGS.officeLocation.lng,
+            },
+          } : data.settings);
+        }
         setTidbStatus('connected');
         setAppDataReady(true);
       } catch (error) {
@@ -315,7 +327,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           kejuruanList: isAdmin ? kejuruanList : [],
           attendanceRecords,
           leaveRequests,
-          settings: isAdmin ? settings : null,
+          // Settings are saved explicitly through saveAttendanceSettings so
+          // an old autosave snapshot cannot overwrite the current office pin.
+          settings: null,
           // Missions are written only through /api/missions. A snapshot can be stale
           // and must never recreate a mission after it has been deleted.
           missions: [],
@@ -329,7 +343,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [appDataReady, isAuthenticated, jwtToken, currentUser.role, kejuruanList, attendanceRecords, leaveRequests, settings, missionSubmissions, dailyReports]);
+  }, [appDataReady, isAuthenticated, jwtToken, currentUser.role, kejuruanList, attendanceRecords, leaveRequests, missionSubmissions, dailyReports]);
 
 
   const loginWithCode = async (
@@ -913,15 +927,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateSettings = async (newSettings: Partial<AttendanceSettings>): Promise<{ success: boolean; message: string }> => {
     const updatedSettings = { ...settings, ...newSettings };
     try {
-      await api.saveAppData({
-        kejuruanList: [],
-        attendanceRecords: [],
-        leaveRequests: [],
-        settings: updatedSettings,
-        missions: [],
-        missionSubmissions: [],
-        dailyReports: [],
-      });
+      await api.saveAttendanceSettings(updatedSettings);
       setSettings(updatedSettings);
       return { success: true, message: 'Pengaturan presensi berhasil disimpan ke sistem.' };
     } catch (error: any) {

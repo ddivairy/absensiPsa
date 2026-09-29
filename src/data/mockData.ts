@@ -290,8 +290,8 @@ export const INITIAL_SETTINGS: AttendanceSettings = {
   allowCheckoutStart: '16:00',
   workDays: [1, 2, 3, 4, 5], // Mon-Fri
   officeLocation: {
-    lat: -6.921024681282541,
-    lng: 107.6750205521894,
+    lat: -6.921045982595817,
+    lng: 107.67498836568335,
     name: 'Punya Skill Akademi HQ, Jl. Puri Ayu Pratama No.Kavling 9A, Sukamiskin, Arcamanik, Bandung',
     radiusMeters: 100
   }

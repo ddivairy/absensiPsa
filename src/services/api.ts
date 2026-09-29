@@ -124,6 +124,13 @@ export const api = {
     });
   },
 
+  async saveAttendanceSettings(settings: AttendanceSettings): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/api/app-data/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  },
+
   async saveAttendanceRecord(record: AttendanceRecord): Promise<{ success: boolean; message: string; duplicate?: boolean; attendanceRecord: AttendanceRecord }> {
     return this.request<{ success: boolean; message: string; duplicate?: boolean; attendanceRecord: AttendanceRecord }>('/api/app-data/attendance', {
       method: 'PUT',
