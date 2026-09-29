@@ -5,7 +5,14 @@ import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hadirku-jwt-secret-vokasi-2026-super-secure';
+const JWT_SECRET = process.env.JWT_SECRET || (
+  process.env.NODE_ENV === 'production'
+    ? ''
+    : 'local-only-hadirku-development-secret'
+);
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET wajib diisi pada environment production.');
+}
 const JWT_EXPIRES_IN = '7d';
 
 export type Role = 'admin' | 'mentor' | 'trainee';

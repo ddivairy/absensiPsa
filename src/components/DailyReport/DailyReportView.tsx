@@ -98,15 +98,8 @@ export const DailyReportView: React.FC = () => {
     setFormPhotoName(file.name);
     try {
       setIsUploadingPhoto(true);
-      const reader = new FileReader();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = ev => resolve(String(ev.target?.result ?? ''));
-        reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
-        reader.readAsDataURL(file);
-      });
-
       const uploadResult = await api.uploadImageToCloudinary({
-        image: dataUrl,
+        file,
         folder: 'hadirku/reports',
       });
 

@@ -410,7 +410,7 @@ export const MissionManagementView: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col items-start gap-4">
         <div>
           <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase mb-1">
             Kejuruan Vokasi
@@ -428,9 +428,9 @@ export const MissionManagementView: React.FC = () => {
           <MobileHeaderStatus />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2">
           {/* Action Button for Mentor / Admin */}
-          {isMentor && (
+          {(isMentor || isAdmin) && (
             <button
               onClick={handleOpenCreateModal}
               className="px-4 py-2 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
