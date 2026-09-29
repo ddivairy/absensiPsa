@@ -141,6 +141,33 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .sidebar-inner .text-\[10px\] { font-size: 11px !important; }
 .sidebar-inner .text-\[11px\] { font-size: 12px !important; }
 
+/* Keep the sidebar scrollbar at the outer edge, outside the navigation content. */
+.sidebar-scroll-area {
+  margin-right: -1.25rem;
+  padding-right: 1.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: #8aa8bf transparent;
+  overscroll-behavior: contain;
+}
+
+.sidebar-scroll-area::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll-area::-webkit-scrollbar-thumb {
+  background: #8aa8bf;
+  border: 1px solid #123B59;
+  border-radius: 9999px;
+}
+
+.sidebar-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #A9C7DE;
+}
+
 /* ── Mobile Nav ──────────────────────────────────────────────────────────── */
 .mobile-nav-item.is-active {
   color: var(--blue);
@@ -490,6 +517,18 @@ html[data-theme='dark'] .side-nav-item.is-active {
 html[data-theme='dark'] .sidebar-theme-toggle:hover {
   background-color: transparent !important;
   color: #ffffff;
+}
+
+html[data-theme='dark'] .sidebar-scroll-area {
+  scrollbar-color: #29465d transparent;
+}
+
+html[data-theme='dark'] .sidebar-scroll-area::-webkit-scrollbar-thumb {
+  background: #29465d;
+}
+
+html[data-theme='dark'] .sidebar-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #385166;
 }
 
 html[data-theme='dark'] ::-webkit-scrollbar-track { background: #101b26; }
