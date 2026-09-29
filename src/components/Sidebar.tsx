@@ -182,9 +182,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarInner = (
-    <div className="sidebar-inner flex h-full w-full min-w-0 select-none flex-col overflow-y-auto bg-[#123B59] p-5 text-white">
+    <div className="sidebar-inner flex h-full w-full min-w-0 select-none flex-col overflow-hidden bg-[#123B59] p-5 text-white">
       {/* Brand Header */}
-      <div className="relative flex items-start px-1">
+      <div className="sidebar-brand-header relative z-40 -mx-5 -mt-5 mb-0 flex min-h-[88px] shrink-0 items-center bg-[#123B59] px-5 pb-1 pt-3">
         <button
           type="button"
           onClick={() =>
@@ -196,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'dashboard'
             )
           }
-          className="brand-lockup flex max-w-[calc(100%-42px)] items-center gap-2.5 text-left hover:opacity-90 transition cursor-pointer group"
+          className="brand-lockup flex min-w-0 items-center gap-2.5 text-left hover:opacity-90 transition cursor-pointer group"
           title="Ke Halaman Utama"
         >
           <img src={psaLogo} alt="Logo PSA" className="sidebar-logo" />
@@ -206,11 +206,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </button>
 
-        <div className="absolute right-0 top-0 flex items-center gap-1">
+        <div className="sidebar-header-controls absolute right-5 top-3 z-10 flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => setThemeMenuOpen(open => !open)}
-            className="rounded-lg p-2 text-white/75 transition hover:bg-white/10 hover:text-white cursor-pointer"
+            className="sidebar-theme-toggle rounded-lg p-2 text-white/75 transition hover:bg-white/10 hover:text-white cursor-pointer"
             aria-label="Atur tema tampilan"
             aria-expanded={themeMenuOpen}
             title="Pengaturan tema"
@@ -220,6 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Close button for mobile drawer */}
           <button
+            type="button"
             onClick={onCloseMobile}
             className="lg:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
             aria-label="Tutup Menu"
@@ -229,7 +230,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {themeMenuOpen && (
-          <div className="theme-menu absolute z-50 w-52 rounded-xl border border-white/15 bg-[#0D2F47] p-1.5 shadow-2xl">
+          <div className="theme-menu absolute right-5 top-[calc(100%+8px)] z-50 w-52 rounded-xl border border-white/15 bg-[#0D2F47] p-1.5 shadow-2xl">
             <p className="px-2.5 pb-1.5 pt-1 text-[9px] font-bold tracking-[.12em] text-[#A9C7DE]">TEMA TAMPILAN</p>
             {([
               ['light', 'Terang', Sun],
@@ -258,8 +259,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
+      <div className="sidebar-scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto">
       {/* User Section / Card */}
-      <section className="mt-4 rounded-2xl border border-white/10 bg-white/[.07] p-3.5">
+      <section className="mt-2 rounded-2xl border border-white/10 bg-white/[.07] p-3.5">
         <div className="flex items-center gap-3">
           {currentUser.avatar ? (
             <img
@@ -350,6 +352,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <LogOut className="w-3.5 h-3.5" />
           <span>Keluar</span>
         </button>
+      </div>
       </div>
     </div>
   );

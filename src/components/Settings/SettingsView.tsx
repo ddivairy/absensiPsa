@@ -54,7 +54,7 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="w-full min-w-0 space-y-6">
       {/* Header */}
       <div className="pb-4 border-b border-[#E4EAF0]">
         <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase">
@@ -83,7 +83,7 @@ export const SettingsView: React.FC = () => {
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Working Hours */}
-        <div className="surface rounded-2xl p-5 sm:p-6 border border-[#E4EAF0] space-y-4">
+        <div className="surface min-w-0 rounded-2xl p-5 sm:p-6 border border-[#E4EAF0] space-y-4">
           <div className="flex items-center gap-2 border-b border-[#E4EAF0] pb-3">
             <span className="w-8 h-8 rounded-xl bg-[#EAF2F8] text-[#4C83B5] flex items-center justify-center">
               <Clock className="w-4 h-4" />
@@ -93,7 +93,7 @@ export const SettingsView: React.FC = () => {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div className="grid min-w-0 grid-cols-1 gap-4 text-xs sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="block text-[#123B59] font-bold mb-1.5">
                 Jam Mulai Masuk
@@ -139,7 +139,7 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Location & GPS */}
-        <div className="surface rounded-2xl p-5 sm:p-6 border border-[#E4EAF0] space-y-4">
+        <div className="surface min-w-0 rounded-2xl p-5 sm:p-6 border border-[#E4EAF0] space-y-4">
           <div className="flex items-center gap-2 border-b border-[#E4EAF0] pb-3">
             <span className="w-8 h-8 rounded-xl bg-[#EAF2F8] text-[#4C83B5] flex items-center justify-center">
               <MapPin className="w-4 h-4" />
@@ -149,7 +149,7 @@ export const SettingsView: React.FC = () => {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div className="grid min-w-0 grid-cols-1 gap-4 text-xs sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2">
               <label className="block text-[#123B59] font-bold mb-1.5">
                 Nama Gedung / Kampus Pelatihan
@@ -193,8 +193,8 @@ export const SettingsView: React.FC = () => {
                   setOfficeLat(Number(position.coords.latitude.toFixed(6)));
                   setOfficeLng(Number(position.coords.longitude.toFixed(6)));
                 }, () => setLocationError('Lokasi kampus tidak terdeteksi. Izinkan akses GPS saat berada di Punya Skill Akademi, Bandung.'), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-              }} className="inline-flex items-center gap-2 rounded-xl border border-[#C8DCEB] bg-[#EEF6FB] px-3 py-2.5 font-bold text-[#28618F]">
-                <LocateFixed className="h-4 w-4" /> Ambil pin GPS kampus dari lokasi saat ini
+              }} className="inline-flex max-w-full items-center gap-2 rounded-xl border border-[#C8DCEB] bg-[#EEF6FB] px-3 py-2.5 text-left font-bold text-[#28618F]">
+                <LocateFixed className="h-4 w-4 shrink-0" /> Ambil pin GPS kampus dari lokasi saat ini
               </button>
               <a className="text-xs font-semibold text-[#28618F] hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${officeLat},${officeLng}`}>Cek pin di Google Maps</a>
               {locationError && <p role="alert" className="w-full text-xs font-semibold text-[#B84469]">{locationError}</p>}
@@ -204,7 +204,7 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Hierarchical Verification Info Card */}
-        <div className="surface rounded-2xl p-5 sm:p-6 border border-[#E4EAF0] space-y-3">
+        <div className="surface min-w-0 rounded-2xl p-5 sm:p-6 border border-[#E4EAF0] space-y-3">
           <div className="flex items-center gap-2 border-b border-[#E4EAF0] pb-3">
             <span className="w-8 h-8 rounded-xl bg-[#EAF2F8] text-[#4C83B5] flex items-center justify-center">
               <ShieldCheck className="w-4 h-4" />
