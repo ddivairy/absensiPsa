@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { DailyReport } from '../../types';
+import { api } from '../../services/api';
 import {
   FileImage,
   Upload,
@@ -64,6 +65,7 @@ export const DailyReportView: React.FC = () => {
   const [formPhotoName, setFormPhotoName] = useState<string | undefined>();
   const [formSubmissionLink, setFormSubmissionLink] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const myReportForDate = useMemo(
@@ -79,7 +81,7 @@ export const DailyReportView: React.FC = () => {
     [dailyReports, currentUser.id]
   );
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -92,9 +94,33 @@ export const DailyReportView: React.FC = () => {
     }
     setFormError(null);
     setFormPhotoName(file.name);
-    const reader = new FileReader();
-    reader.onload = ev => setFormPhotoUrl(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    try {
+      setIsUploadingPhoto(true);
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = ev => resolve(String(ev.target?.result ?? ''));
+        reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
+        reader.readAsDataURL(file);
+      });
+
+      const uploadResult = await api.uploadImageToCloudinary({
+        image: dataUrl,
+        folder: 'hadirku/reports',
+      });
+
+      if (!uploadResult.success || !uploadResult.url) {
+        throw new Error(uploadResult.message || 'Gagal upload foto laporan.');
+      }
+
+      setFormPhotoUrl(uploadResult.url);
+    } catch (error: any) {
+      setFormError(error.message || 'Gagal mengupload foto laporan ke Cloudinary.');
+      setFormPhotoUrl(undefined);
+      setFormPhotoName(undefined);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {

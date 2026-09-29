@@ -15,6 +15,7 @@ import {
   MapPin,
   Clock,
   BookOpen,
+  UserRound,
   Sun,
   Moon,
   Monitor,
@@ -134,8 +135,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'hall-of-fame', label: 'Hall of Fame Mentor', icon: Trophy },
         { id: 'rekap', label: 'Rekapitulasi Presensi', icon: FileSpreadsheet },
         { id: 'peserta', label: 'Peserta & Kejuruan', icon: Users },
-        { id: 'izin', label: 'Izin & Sakit', icon: FileText },
-        { id: 'pengaturan', label: 'Pengaturan Sistem', icon: Sliders }
+        { id: 'izin', label: 'Izin & Sakit', icon: FileText, badge: pendingLeavesCount },
+        { id: 'pengaturan', label: 'Pengaturan Sistem', icon: Sliders },
+        { id: 'profil', label: 'Profil Saya', icon: UserRound }
       ];
     } else if (currentUser.role === 'mentor') {
       return [
@@ -144,7 +146,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'misi', label: 'Misi Kejuruan', icon: Target, badge: pendingMissionsCount },
         { id: 'hall-of-fame', label: 'Hall of Fame', icon: Trophy },
         { id: 'rekap', label: 'Rekap Bulanan', icon: FileSpreadsheet },
-        { id: 'izin', label: 'Verifikasi Izin', icon: FileText, badge: pendingLeavesCount }
+        { id: 'izin', label: 'Verifikasi Izin', icon: FileText, badge: pendingLeavesCount },
+        { id: 'profil', label: 'Profil Saya', icon: UserRound }
       ];
     } else {
       return [
@@ -153,7 +156,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'misi', label: 'Misi Kejuruan', icon: Target },
         { id: 'hall-of-fame', label: 'Hall of Fame', icon: Trophy },
         { id: 'rekap', label: 'Rekap Kehadiran', icon: FileSpreadsheet },
-        { id: 'izin', label: 'Pengajuan Izin', icon: FileText }
+        { id: 'izin', label: 'Pengajuan Izin', icon: FileText },
+        { id: 'profil', label: 'Profil Saya', icon: UserRound }
       ];
     }
   };

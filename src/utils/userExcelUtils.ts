@@ -297,7 +297,6 @@ export async function parseUsersFromExcelFile(
           kejuruanName: programValue ? (targetKj?.name || programValue) : undefined,
           loginCode: rawCode,
           password: rawPass,
-          email: `${rawIdentifier}@hadirku.id`,
           phone: '',
           status: 'active',
           joinedDate: new Date().toISOString().split('T')[0],

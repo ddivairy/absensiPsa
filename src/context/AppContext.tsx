@@ -40,6 +40,7 @@ interface AppContextType {
   loginWithCode: (code: string, password?: string) => Promise<{ success: boolean; message: string; user?: User }>;
   loginWithAdmin: (identifier: string, password?: string) => Promise<{ success: boolean; message: string; user?: User }>;
   logout: () => void;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
   // Clock in/out actions
   clockIn: (notes?: string, photoUrl?: string, coordinates?: { lat: number; lng: number }, workMode?: 'WFO' | 'WFH') => { success: boolean; message: string };
   clockOut: (notes?: string, coordinates?: { lat: number; lng: number }) => { success: boolean; message: string };
@@ -104,6 +105,7 @@ interface AppContextType {
   // User & Kejuruan management
   addUser: (userData: Omit<User, 'id'>) => Promise<{ success: boolean; message: string; user?: User }>;
   updateUser: (id: string, updates: Partial<User>) => Promise<{ success: boolean; message: string }>;
+  updateMyAvatar: (avatar: string) => Promise<{ success: boolean; message: string }>;
   deleteUser: (id: string) => Promise<{ success: boolean; message: string }>;
   deleteUsersByRole: (role: 'trainee' | 'mentor' | 'all') => Promise<{ success: boolean; count: number; message: string }>;
   importUsers: (importedUsers: Partial<User>[]) => Promise<{ success: boolean; count: number; message: string }>;
@@ -349,6 +351,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAppDataReady(false);
   };
 
+  const changePassword = async (
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const result = await api.changePassword({ currentPassword, newPassword });
+      return {
+        success: result.success,
+        message: result.message || 'Kata sandi berhasil diperbarui.'
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Tidak dapat memperbarui kata sandi saat ini.'
+      };
+    }
+  };
+
   const getTodayRecordForUser = (userId: string): AttendanceRecord | undefined => {
     const today = getTodayDateString();
     return attendanceRecords.find(r => r.userId === userId && r.date === today);
@@ -538,7 +558,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     reviewNotes?: string
   ): Promise<{ success: boolean; message: string }> => {
     let targetLeave = leaveRequests.find(l => l.id === id);
-    if (currentUser.role !== 'mentor' || !targetLeave || targetLeave.kejuruanId !== currentUser.kejuruanId) {
+    if (!targetLeave) {
+      return { success: false, message: 'Permohonan izin tidak ditemukan.' };
+    }
+
+    if (
+      currentUser.role !== 'admin' &&
+      (currentUser.role !== 'mentor' || targetLeave.kejuruanId !== currentUser.kejuruanId)
+    ) {
       return { success: false, message: 'Anda tidak memiliki akses untuk memproses permohonan ini.' };
     }
 
@@ -716,6 +743,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, message: 'Data pengguna berhasil diperbarui.' };
   };
 
+  const updateMyAvatar = async (avatar: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const result = await api.updateMyAvatar(avatar);
+      setUsers(prev => prev.map(u => (u.id === currentUser.id ? { ...u, avatar } : u)));
+      return result;
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Tidak dapat memperbarui foto profil.' };
+    }
+  };
+
   const deleteUser = async (id: string): Promise<{ success: boolean; message: string }> => {
     try {
       const res = await api.deleteUser(id);
@@ -755,7 +792,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await api.updateUser(userId, {
         nim: newCode,
         loginCode: newCode,
-        email: `${newCode}@hadirku.id`,
         password: newPassword,
       });
     } catch (err: any) {
@@ -770,7 +806,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUsers(prev =>
       prev.map(u =>
         u.id === userId
-          ? { ...u, nim: newCode, loginCode: newCode, email: `${newCode}@hadirku.id`, password: newPassword }
+          ? { ...u, nim: newCode, loginCode: newCode, password: newPassword }
           : u
       )
     );
@@ -1048,6 +1084,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loginWithCode,
         loginWithAdmin,
         logout,
+        changePassword,
         clockIn,
         clockOut,
         getTodayRecordForUser,
@@ -1066,6 +1103,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reviewDailyReport,
         addUser,
         updateUser,
+        updateMyAvatar,
         deleteUser,
         deleteUsersByRole,
         importUsers,
