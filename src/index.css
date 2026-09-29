@@ -319,8 +319,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 /* The menu stays aligned with the sidebar's top-right control and opens below the header. */
 .theme-menu {
-  top: calc(100% + 10px);
-  right: 0;
+  top: calc(100% + 8px);
+  right: 20px;
   left: auto;
 }
 
@@ -485,6 +485,11 @@ html[data-theme='dark'] textarea::placeholder {
 html[data-theme='dark'] .side-nav-item:hover,
 html[data-theme='dark'] .side-nav-item.is-active {
   background: rgba(184, 211, 231, .18);
+}
+
+html[data-theme='dark'] .sidebar-theme-toggle:hover {
+  background-color: transparent !important;
+  color: #ffffff;
 }
 
 html[data-theme='dark'] ::-webkit-scrollbar-track { background: #101b26; }
