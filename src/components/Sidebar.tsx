@@ -381,17 +381,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </aside>
 
       {/* Mobile Drawer Overlay */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div
-            className="fixed inset-0 bg-[#0D2F47]/60 backdrop-blur-xs transition-opacity"
-            onClick={onCloseMobile}
-          />
-          <div className="relative z-10 h-full w-[min(300px,calc(100vw-2rem))] shadow-2xl">
-            {sidebarInner}
-          </div>
+      <div
+        className={`mobile-drawer lg:hidden fixed inset-0 z-50 flex ${mobileOpen ? 'is-open' : ''}`}
+        aria-hidden={!mobileOpen}
+      >
+        <div
+          className="mobile-drawer-backdrop fixed inset-0"
+          onClick={onCloseMobile}
+        />
+        <div className="mobile-drawer-panel relative z-10 h-full w-[min(300px,calc(100vw-2rem))] overflow-hidden rounded-r-3xl shadow-2xl">
+          {sidebarInner}
         </div>
-      )}
+      </div>
     </>
   );
 };

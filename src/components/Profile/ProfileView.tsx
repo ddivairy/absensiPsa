@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import { api } from '../../services/api';
 import { UserRound, LockKeyhole, CheckCircle2, BadgeCheck } from 'lucide-react';
 
@@ -104,6 +105,7 @@ export const ProfileView: React.FC = () => {
         <p className="text-xs text-[#6F7F8D] mt-1">
           Kelola data diri Anda dan ubah kata sandi untuk semua role pengguna.
         </p>
+        <MobileHeaderStatus />
       </div>
 
       <div className="surface rounded-2xl p-5 sm:p-6 border border-[#E4EAF0]">

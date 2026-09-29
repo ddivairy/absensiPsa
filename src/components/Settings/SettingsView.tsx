@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import { Clock, MapPin, Save, CheckCircle2, ShieldCheck, UserCheck, GraduationCap, LocateFixed } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -65,6 +66,7 @@ export const SettingsView: React.FC = () => {
         <p className="text-xs text-[#6F7F8D] mt-1">
           Konfigurasi jam masuk pelatihan kejuruan, batas toleransi keterlambatan, dan parameter radius absensi.
         </p>
+        <MobileHeaderStatus />
       </div>
 
       {savedSuccess && (

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getTodayDateString, INDONESIAN_MONTHS } from '../../utils/dateUtils';
 import { getKejuruanFilterOptions, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -243,6 +244,7 @@ export const DailyReportView: React.FC = () => {
           <p className="text-xs text-[#6F7F8D] mt-0.5">
             Upload foto dan catatan kegiatan harian kamu untuk diverifikasi mentor.
           </p>
+          <MobileHeaderStatus />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -495,6 +497,7 @@ export const DailyReportView: React.FC = () => {
           <p className="text-xs text-[#6F7F8D] mt-0.5">
             Tinjau foto dan catatan kegiatan harian peserta, lalu berikan persetujuan atau catatan revisi.
           </p>
+          <MobileHeaderStatus />
         </div>
         {pendingCount > 0 && (
           <div className="surface px-4 py-2.5 rounded-2xl flex items-center gap-3">

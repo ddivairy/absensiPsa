@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import {
   FileSpreadsheet,
   FileText,
@@ -194,6 +195,7 @@ export const MonthlyRecapView: React.FC = () => {
               ? `Ringkasan kehadiran mandiri · Periode ${recapData.monthName} ${selectedYear} · ${currentUser.name} (${currentUser.nim || '-'})`
               : `Ringkasan Statistik Kehadiran Bulanan · Periode ${recapData.monthName} ${selectedYear} (${filteredSummaries.length} Peserta)`}
           </p>
+          <MobileHeaderStatus />
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">

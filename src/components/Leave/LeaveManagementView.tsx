@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import {
   FileText,
   CheckCircle2,
@@ -120,6 +121,7 @@ export const LeaveManagementView: React.FC = () => {
             ? 'Formulir resmi ketidakhadiran peserta pelatihan & magang kejuruan.'
             : currentUser.role === 'admin' ? 'Lihat permohonan izin dan lampiran peserta.' : 'Tinjau dan setujui surat permohonan izin atau surat keterangan sakit peserta.'}
         </p>
+        <MobileHeaderStatus />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_.9fr]">

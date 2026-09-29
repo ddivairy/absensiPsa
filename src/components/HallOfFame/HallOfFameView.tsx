@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import { getKejuruanFilterOptions, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
 import { User, MissionSubmission } from '../../types';
 import {
@@ -150,7 +151,7 @@ export const HallOfFameView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col items-start gap-4">
         <div>
           <p className="text-[10px] font-bold tracking-[.14em] text-[#4C83B5] uppercase mb-1">
             Papan Prestasi
@@ -161,6 +162,7 @@ export const HallOfFameView: React.FC = () => {
           <p className="text-xs text-[#6F7F8D] mt-0.5">
             Papan peringkat seluruh peserta pelatihan vokasi dengan perolehan poin misi tertinggi.
           </p>
+          <MobileHeaderStatus />
         </div>
 
         {currentUser.role === 'trainee' && myRanking && (
@@ -346,7 +348,7 @@ export const HallOfFameView: React.FC = () => {
                 <th className="py-3 px-4 w-16 text-center">Rank</th>
                 <th className="py-3 px-4">Peserta Pelatihan</th>
                 <th className="py-3 px-3">Kejuruan Vokasi</th>
-                <th className="py-3 px-3">Tingkat Prestasi</th>
+                <th className="py-3 px-3 min-w-[150px]">Tingkat Prestasi</th>
                 <th className="py-3 px-3 text-center">Misi Selesai</th>
                 <th className="py-3 px-4 text-right">Total Poin</th>
                 <th className="py-3 px-4 text-right">Detail</th>
@@ -428,9 +430,9 @@ export const HallOfFameView: React.FC = () => {
                       </td>
 
                       {/* Badge / Level */}
-                      <td className="py-3 px-3">
+                      <td className="py-3 px-3 whitespace-nowrap">
                         <span
-                          className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${ranking.badgeLevel.bg} ${ranking.badgeLevel.color} ${ranking.badgeLevel.border}`}
+                          className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-md text-[11px] font-semibold border ${ranking.badgeLevel.bg} ${ranking.badgeLevel.color} ${ranking.badgeLevel.border}`}
                         >
                           {ranking.badgeLevel.title}
                         </span>

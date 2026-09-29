@@ -237,8 +237,9 @@ export const TraineeDashboard: React.FC = () => {
         </div>
       )}
 
+      <div className="flex flex-col gap-5">
       {/* 1. Summary Cards (Matching style.html) */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section className="order-2 grid grid-cols-1 gap-4 sm:order-1 sm:grid-cols-3">
         {/* Hadir */}
         <article className="metric-card soft-hover surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
@@ -295,7 +296,7 @@ export const TraineeDashboard: React.FC = () => {
       </section>
 
       {/* 2. Middle Section: Today's Status & Today's Activity */}
-      <div className="grid gap-5 xl:grid-cols-12">
+      <div className="order-1 grid gap-5 sm:order-2 xl:grid-cols-12">
         {/* Left: Presensi Hari Ini (today-status-card) */}
         <section className="surface soft-hover rounded-2xl p-5 sm:p-6 xl:col-span-7 flex flex-col justify-between">
           <div>
@@ -547,6 +548,7 @@ export const TraineeDashboard: React.FC = () => {
             </p>
           </div>
         </aside>
+      </div>
       </div>
 
       {/* 3. Bottom Section: Mini Calendar & Recent History List */}
