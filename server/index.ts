@@ -938,7 +938,7 @@ app.get('/api/missions', authenticateToken, async (req: AuthenticatedRequest, re
   }
 });
 
-app.post('/api/missions', authenticateToken, authorizeRoles('admin', 'mentor'), async (req: AuthenticatedRequest, res) => {
+app.post('/api/missions', authenticateToken, authorizeRoles('mentor'), async (req: AuthenticatedRequest, res) => {
   try {
     const mission = req.body;
     if (!mission?.id || !mission?.title?.trim() || !mission?.description?.trim() || !mission?.kejuruanId || !mission?.kejuruanName) {

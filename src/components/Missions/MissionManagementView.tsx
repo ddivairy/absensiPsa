@@ -97,7 +97,7 @@ export const MissionManagementView: React.FC = () => {
   );
 
   const [activeTab, setActiveTab] = useState<'missions' | 'submissions'>(
-    isMentor ? 'missions' : 'missions'
+    isAdmin ? 'submissions' : 'missions'
   );
 
   const [selectedKejuruanFilter, setSelectedKejuruanFilter] = useState<string>(
@@ -429,8 +429,8 @@ export const MissionManagementView: React.FC = () => {
         </div>
 
         <div className="flex w-full flex-wrap items-center gap-2">
-          {/* Action Button for Mentor / Admin */}
-          {(isMentor || isAdmin) && (
+          {/* Mission creation is managed by mentors. */}
+          {isMentor && (
             <button
               onClick={handleOpenCreateModal}
               className="px-4 py-2 rounded-xl bg-[#123B59] hover:bg-[#0D2F47] text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
@@ -469,17 +469,19 @@ export const MissionManagementView: React.FC = () => {
       {/* Tabs Switcher for Mentor / Admin */}
       {(isMentor || isAdmin) && (
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('missions')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 ${
-              activeTab === 'missions'
-                ? 'bg-[#123B59] text-white shadow-sm'
-                : 'bg-white border border-[#E4EAF0] text-[#6F7F8D] hover:text-[#123B59] hover:border-[#4C83B5]'
-            }`}
-          >
-            <Target className="w-3.5 h-3.5" />
-            <span>Katalog Misi ({filteredMissions.length})</span>
-          </button>
+          {isMentor && (
+            <button
+              onClick={() => setActiveTab('missions')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 ${
+                activeTab === 'missions'
+                  ? 'bg-[#123B59] text-white shadow-sm'
+                  : 'bg-white border border-[#E4EAF0] text-[#6F7F8D] hover:text-[#123B59] hover:border-[#4C83B5]'
+              }`}
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span>Katalog Misi ({filteredMissions.length})</span>
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab('submissions')}
@@ -503,16 +505,18 @@ export const MissionManagementView: React.FC = () => {
       {/* Filters Bar */}
       <div className="surface flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl">
         <div className="flex flex-wrap items-center gap-2 flex-1">
-          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-            <Search className="w-3.5 h-3.5 text-[#A9C7DE] absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Cari misi, kategori, atau topik..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] placeholder-[#A9C7DE] outline-none focus:ring-1 focus:ring-[#4C83B5]"
-            />
-          </div>
+          {!isAdmin && (
+            <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+              <Search className="w-3.5 h-3.5 text-[#A9C7DE] absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari misi, kategori, atau topik..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] placeholder-[#A9C7DE] outline-none focus:ring-1 focus:ring-[#4C83B5]"
+              />
+            </div>
+          )}
 
           {/* Kejuruan Filter */}
           {!isTrainee && (
@@ -529,25 +533,29 @@ export const MissionManagementView: React.FC = () => {
           )}
 
           {/* Difficulty Filter */}
-          <select
-            value={selectedDifficulty}
-            onChange={e => setSelectedDifficulty(e.target.value)}
-            className="text-xs py-1.5 px-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none"
-          >
-            <option value="all">Semua Tingkat Kesulitan</option>
-            <option value="Mudah">Mudah</option>
-            <option value="Sedang">Sedang</option>
-            <option value="Tantangan">Tantangan</option>
-          </select>
+          {!isAdmin && (
+            <select
+              value={selectedDifficulty}
+              onChange={e => setSelectedDifficulty(e.target.value)}
+              className="text-xs py-1.5 px-2.5 rounded-lg border border-[#E4EAF0] bg-[#F4F6F8] text-[#123B59] outline-none"
+            >
+              <option value="all">Semua Tingkat Kesulitan</option>
+              <option value="Mudah">Mudah</option>
+              <option value="Sedang">Sedang</option>
+              <option value="Tantangan">Tantangan</option>
+            </select>
+          )}
         </div>
 
-        <div className="text-[11px] text-[#6F7F8D] self-center">
-          Menampilkan <strong className="text-[#123B59]">{filteredMissions.length}</strong> misi
-        </div>
+        {!isAdmin && (
+          <div className="text-[11px] text-[#6F7F8D] self-center">
+            Menampilkan <strong className="text-[#123B59]">{filteredMissions.length}</strong> misi
+          </div>
+        )}
       </div>
 
       {/* VIEW 1: MISSIONS CATALOG */}
-      {activeTab === 'missions' && (
+      {activeTab === 'missions' && !isAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredMissions.length === 0 ? (
             <div className="col-span-full py-12 text-center surface rounded-2xl text-[#6F7F8D] text-xs">
