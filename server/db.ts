@@ -3,18 +3,54 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const rawDbUrl = process.env.DATABASE_URL || '';
-
-// Parse connection details
 function getDbConfig() {
-  const url = new URL(rawDbUrl || 'mysql://localhost:3306/test');
-  const dbName = url.pathname.replace(/^\//, '');
-  const database = dbName && dbName !== 'sys' ? dbName : 'absensi_db';
+  const splitConfigKeys = [
+    'TIDB_HOST',
+    'TIDB_PORT',
+    'TIDB_USER',
+    'TIDB_PASSWORD',
+    'TIDB_DATABASE',
+  ] as const;
+  const hasSplitConfig = splitConfigKeys.some(key => process.env[key] !== undefined);
+
+  let host: string;
+  let port: number;
+  let user: string;
+  let password: string;
+  let database: string;
+
+  if (hasSplitConfig) {
+    const missing = ['TIDB_HOST', 'TIDB_USER', 'TIDB_PASSWORD']
+      .filter(key => !process.env[key]);
+    if (missing.length) {
+      throw new Error(`Konfigurasi TiDB belum lengkap. Variabel wajib: ${missing.join(', ')}.`);
+    }
+
+    host = process.env.TIDB_HOST!;
+    port = Number(process.env.TIDB_PORT || 4000);
+    user = process.env.TIDB_USER!;
+    password = process.env.TIDB_PASSWORD!;
+    database = process.env.TIDB_DATABASE || 'absensi_db';
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error('TIDB_PORT harus berupa nomor port yang valid.');
+    }
+  } else {
+    // Keep DATABASE_URL support for existing deployments. Reserved characters
+    // in URL credentials (such as @) must be percent-encoded, e.g. %40.
+    const url = new URL(process.env.DATABASE_URL || 'mysql://localhost:3306/test');
+    const dbName = url.pathname.replace(/^\//, '');
+    host = url.hostname;
+    port = parseInt(url.port || '4000', 10);
+    user = decodeURIComponent(url.username);
+    password = decodeURIComponent(url.password);
+    database = dbName && dbName !== 'sys' ? dbName : 'absensi_db';
+  }
+
   return {
-    host: url.hostname,
-    port: parseInt(url.port || '4000', 10),
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
+    host,
+    port,
+    user,
+    password,
     database,
     ssl: {
       minVersion: 'TLSv1.2',

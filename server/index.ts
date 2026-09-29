@@ -5,7 +5,7 @@ import { getPool, initDatabase, DbUser } from './db';
 import { appDataRouter } from './appData';
 import { canonicalKejuruanCode } from './kejuruanCodes';
 import bcrypt from 'bcryptjs';
-import { uploadToCloudinary, isCloudinaryConfigured } from './cloudinary';
+import { createDirectUploadSignature, uploadToCloudinary, isCloudinaryConfigured } from './cloudinary';
 import {
   generateToken,
   authenticateToken,
@@ -37,9 +37,51 @@ function importedKejuruanId(programName: string): string {
   return `kj-import-${(hash >>> 0).toString(36)}`;
 }
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || true, credentials: true }));
+const configuredClientOrigins = (process.env.CLIENT_ORIGIN || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, false);
+    if (configuredClientOrigins.includes(origin)) return callback(null, true);
+    if (process.env.NODE_ENV !== 'production' && configuredClientOrigins.length === 0) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
+
+// Vercel Functions have no persistent server startup hook. Initialize once per
+// warm function instance before the first API request instead of calling listen().
+if (process.env.VERCEL === '1') {
+  let databaseInitialization: Promise<void> | null = null;
+  app.use((req, res, next) => {
+    databaseInitialization ??= initDatabase();
+    databaseInitialization.then(() => next()).catch(error => {
+      databaseInitialization = null;
+      console.error('[TiDB] Initialization failed in Vercel Function:', error);
+      res.status(503).json({ success: false, message: 'Database belum siap. Coba lagi beberapa saat.' });
+    });
+  });
+}
+
 app.use('/api/app-data', appDataRouter);
+
+app.post('/api/upload/signature', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+  const folder = String(req.body?.folder || '');
+  if (!['hadirku/profile', 'hadirku/reports'].includes(folder)) {
+    return res.status(400).json({ success: false, message: 'Folder upload tidak valid.' });
+  }
+
+  try {
+    return res.json({ success: true, ...createDirectUploadSignature(folder) });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Gagal menyiapkan upload.' });
+  }
+});
 
 app.post('/api/upload', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -1106,4 +1148,8 @@ async function startServer() {
   }
 }
 
-startServer();
+export default app;
+
+if (process.env.VERCEL !== '1') {
+  void startServer();
+}

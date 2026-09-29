@@ -180,11 +180,41 @@ export const api = {
     });
   },
 
-  async uploadImageToCloudinary(payload: { image: string; folder?: string }): Promise<{ success: boolean; url?: string; publicId?: string; message: string }> {
-    return this.request<{ success: boolean; url?: string; publicId?: string; message: string }>('/api/upload', {
+  async uploadImageToCloudinary(payload: { file: File; folder: string }): Promise<{ success: boolean; url?: string; publicId?: string; message: string }> {
+    const signedUpload = await this.request<{
+      success: boolean;
+      cloudName: string;
+      apiKey: string;
+      folder: string;
+      timestamp: number;
+      signature: string;
+    }>('/api/upload/signature', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ folder: payload.folder }),
     });
+
+    const formData = new FormData();
+    formData.append('file', payload.file);
+    formData.append('api_key', signedUpload.apiKey);
+    formData.append('folder', signedUpload.folder);
+    formData.append('timestamp', String(signedUpload.timestamp));
+    formData.append('signature', signedUpload.signature);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${encodeURIComponent(signedUpload.cloudName)}/image/upload`,
+      { method: 'POST', body: formData }
+    );
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.secure_url) {
+      throw new Error(result.error?.message || 'Gagal mengupload gambar ke Cloudinary.');
+    }
+
+    return {
+      success: true,
+      url: result.secure_url,
+      publicId: result.public_id,
+      message: 'Gambar berhasil diupload.',
+    };
   },
 
   // Delete user

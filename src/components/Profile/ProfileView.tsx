@@ -30,15 +30,8 @@ export const ProfileView: React.FC = () => {
 
     try {
       setIsUploadingAvatar(true);
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ''));
-        reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
-        reader.readAsDataURL(file);
-      });
-
       const uploadResult = await api.uploadImageToCloudinary({
-        image: dataUrl,
+        file,
         folder: 'hadirku/profile',
       });
 
