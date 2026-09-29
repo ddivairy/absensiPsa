@@ -1,9 +1,6 @@
 import app from '../server/index';
 
-// Vercel strips the `/api` prefix when routing to a catch-all function
-// (`/api/auth/login` can arrive as `/auth/login`). Express routes are
-// registered WITH the `/api` prefix, so normalize back to `/api/*` here
-// to avoid 404s that look like "backend mati".
+// Catch-all handler for root /api requests on Vercel
 export default function handler(req: any, res: any) {
   try {
     const originalUrl: string = typeof req.url === 'string' ? req.url : '/';
