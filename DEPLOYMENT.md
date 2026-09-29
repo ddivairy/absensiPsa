@@ -2,7 +2,7 @@
 
 ## Konfigurasi project
 
-Hubungkan repository ke Vercel. File `vercel.json` sudah mengatur framework Vite, output `dist`, dan function `/api`. Function di-region Singapore (`sin1`) agar dekat dengan cluster TiDB Asia Tenggara.
+Hubungkan repository ke Vercel. File `vercel.json` mengatur framework Vite, output `dist`, dan meneruskan `/api/*` ke function `api/dispatch.ts` yang menjalankan Express. Endpoint health tetap dilayani `api/health.ts`. Function di-region Singapore (`sin1`) agar dekat dengan cluster TiDB Asia Tenggara.
 
 Frontend (Vite) dan backend (Express di `api/`) harus berada di **satu project Vercel** yang sama agar request `/api/*` memakai domain yang sama.
 

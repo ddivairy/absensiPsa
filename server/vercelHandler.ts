@@ -12,7 +12,7 @@ export function normalizeVercelApiUrl(req: any): void {
   let pathname = queryIndex >= 0 ? originalUrl.slice(0, queryIndex) : originalUrl;
 
   const pathParam = req.query?.path;
-  if (pathParam && (pathname === '/' || pathname === '' || pathname === '/api')) {
+  if (pathParam && (pathname === '/' || pathname === '' || pathname === '/api' || pathname === '/api/dispatch')) {
     const joined = (Array.isArray(pathParam) ? pathParam : [pathParam])
       .flatMap((part: string) => String(part).split('/'))
       .filter(Boolean)
