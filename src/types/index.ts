@@ -31,6 +31,17 @@ export interface User {
   password?: string;  // Login password
 }
 
+export interface TraineeHallOfFameEntry {
+  id: string;
+  nim: string;
+  name: string;
+  avatar: string;
+  kejuruanId?: string;
+  kejuruanName?: string;
+  totalPoints: number;
+  completedMissionsCount: number;
+}
+
 export interface AttendanceRecord {
   id: string;
   userId: string;

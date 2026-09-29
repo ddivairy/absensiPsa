@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { MobileHeaderStatus } from '../MobileHeaderStatus';
 import { getKejuruanFilterOptions, matchesKejuruanFilter } from '../../utils/kejuruanCodes';
-import { User, MissionSubmission } from '../../types';
+import { User, MissionSubmission, TraineeHallOfFameEntry } from '../../types';
+import { api } from '../../services/api';
 import {
   Trophy,
   Medal,
@@ -22,7 +23,7 @@ import {
 } from 'lucide-react';
 
 interface TraineeRanking {
-  user: User;
+  user: Pick<User, 'id' | 'nim' | 'name' | 'avatar' | 'kejuruanId' | 'kejuruanName'>;
   totalPoints: number;
   completedMissionsCount: number;
   approvedSubmissions: MissionSubmission[];
@@ -41,6 +42,30 @@ export const HallOfFameView: React.FC = () => {
   const [selectedKejuruanFilter, setSelectedKejuruanFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTraineeDetail, setSelectedTraineeDetail] = useState<TraineeRanking | null>(null);
+  const [leaderboardTrainees, setLeaderboardTrainees] = useState<TraineeHallOfFameEntry[] | null>(null);
+  const [leaderboardStatus, setLeaderboardStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+
+  useEffect(() => {
+    if (currentUser.role !== 'trainee') {
+      setLeaderboardStatus('loaded');
+      return;
+    }
+
+    let active = true;
+    setLeaderboardStatus('loading');
+    api.getTraineeHallOfFame()
+      .then(result => {
+        if (!active) return;
+        setLeaderboardTrainees(result.trainees);
+        setLeaderboardStatus('loaded');
+      })
+      .catch(error => {
+        console.warn('Could not fetch trainee leaderboard:', error);
+        if (active) setLeaderboardStatus('error');
+      });
+
+    return () => { active = false; };
+  }, [currentUser.role]);
 
   // All trainees
   const trainees = useMemo(() => {
@@ -49,13 +74,31 @@ export const HallOfFameView: React.FC = () => {
 
   // Compute rankings
   const rankings: TraineeRanking[] = useMemo(() => {
-    const list = trainees.map(trainee => {
+    const rankingTrainees = currentUser.role === 'trainee'
+      ? leaderboardTrainees || []
+      : trainees;
+    const list = rankingTrainees.map(trainee => {
+      const isLeaderboardEntry = 'totalPoints' in trainee;
+      const user: TraineeRanking['user'] = isLeaderboardEntry
+        ? {
+            id: trainee.id,
+            nim: trainee.nim,
+            name: trainee.name,
+            avatar: trainee.avatar,
+            kejuruanId: trainee.kejuruanId,
+            kejuruanName: trainee.kejuruanName,
+          }
+        : trainee;
       const userApprovedSubmissions = missionSubmissions.filter(
-        s => s.traineeId === trainee.id && s.status === 'approved'
+        s => s.traineeId === user.id && s.status === 'approved'
       );
 
-      const totalPoints = userApprovedSubmissions.reduce((sum, s) => sum + s.points, 0);
-      const completedMissionsCount = userApprovedSubmissions.length;
+      const totalPoints = isLeaderboardEntry
+        ? trainee.totalPoints
+        : userApprovedSubmissions.reduce((sum, s) => sum + s.points, 0);
+      const completedMissionsCount = isLeaderboardEntry
+        ? trainee.completedMissionsCount
+        : userApprovedSubmissions.length;
 
       // Determine badge tier based on points
       let badgeLevel = {
@@ -96,7 +139,7 @@ export const HallOfFameView: React.FC = () => {
       }
 
       return {
-        user: trainee,
+        user,
         totalPoints,
         completedMissionsCount,
         approvedSubmissions: userApprovedSubmissions,
@@ -118,7 +161,7 @@ export const HallOfFameView: React.FC = () => {
       ...item,
       rank: idx + 1
     }));
-  }, [trainees, missionSubmissions]);
+  }, [currentUser.role, leaderboardTrainees, trainees, missionSubmissions]);
 
   // Filtered rankings
   const filteredRankings = useMemo(() => {
@@ -358,7 +401,11 @@ export const HallOfFameView: React.FC = () => {
               {filteredRankings.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-[#6F7F8D]">
-                    Tidak ditemukan peserta yang sesuai filter.
+                    {currentUser.role === 'trainee' && leaderboardStatus === 'loading'
+                      ? 'Memuat peringkat peserta...'
+                      : currentUser.role === 'trainee' && leaderboardStatus === 'error'
+                        ? 'Peringkat peserta belum dapat dimuat. Coba muat ulang halaman.'
+                        : 'Tidak ditemukan peserta yang sesuai filter.'}
                   </td>
                 </tr>
               ) : (
@@ -460,7 +507,7 @@ export const HallOfFameView: React.FC = () => {
                           onClick={() => setSelectedTraineeDetail(ranking)}
                           className="px-2.5 py-1 rounded-lg border border-[#E4EAF0] bg-white hover:bg-[#EAF2F8] hover:border-[#4C83B5] text-xs font-semibold text-[#123B59] transition cursor-pointer"
                         >
-                          Lihat Misi
+                          {isCurrent ? 'Lihat Misi' : 'Ringkasan'}
                         </button>
                       </td>
                     </tr>
@@ -538,7 +585,9 @@ export const HallOfFameView: React.FC = () => {
 
                 {selectedTraineeDetail.approvedSubmissions.length === 0 ? (
                   <div className="p-6 text-center text-[#6F7F8D] text-xs bg-[#F4F6F8] rounded-xl border border-[#E4EAF0]">
-                    Peserta belum menyelesaikan misi apapun.
+                    {selectedTraineeDetail.user.id === currentUser.id
+                      ? 'Peserta belum menyelesaikan misi apapun.'
+                      : 'Rincian misi peserta lain tidak ditampilkan.'}
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1">

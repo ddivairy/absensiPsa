@@ -1,6 +1,6 @@
 import {
   User, Kejuruan, AttendanceRecord, LeaveRequest, AttendanceSettings,
-  Mission, MissionSubmission, DailyReport
+  Mission, MissionSubmission, DailyReport, TraineeHallOfFameEntry
 } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
@@ -115,6 +115,10 @@ export const api = {
 
   async getAppData(): Promise<{ success: boolean } & AppDataSnapshot> {
     return this.request<{ success: boolean } & AppDataSnapshot>('/api/app-data');
+  },
+
+  async getTraineeHallOfFame(): Promise<{ success: boolean; trainees: TraineeHallOfFameEntry[] }> {
+    return this.request<{ success: boolean; trainees: TraineeHallOfFameEntry[] }>('/api/app-data/hall-of-fame/trainees');
   },
 
   async saveAppData(data: AppDataSnapshot): Promise<{ success: boolean; message: string }> {

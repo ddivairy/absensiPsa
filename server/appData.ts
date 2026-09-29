@@ -221,6 +221,41 @@ appDataRouter.get('/', authenticateToken, async (req: AuthenticatedRequest, res:
   }
 });
 
+appDataRouter.get('/hall-of-fame/trainees', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  if (req.user?.role !== 'trainee') {
+    return res.status(403).json({ success: false, message: 'Peringkat peserta hanya tersedia untuk akun peserta.' });
+  }
+
+  try {
+    const [rows] = await getPool().query<any[]>(`
+      SELECT u.id, u.nim, u.name, u.avatar, u.kejuruan_id, u.kejuruan_name,
+             COUNT(s.id) AS completed_missions_count,
+             COALESCE(SUM(s.points), 0) AS total_points
+      FROM users u
+      LEFT JOIN mission_submissions s ON s.trainee_id = u.id AND s.status = 'approved'
+      WHERE u.role = 'trainee'
+      GROUP BY u.id, u.nim, u.name, u.avatar, u.kejuruan_id, u.kejuruan_name
+      ORDER BY total_points DESC, completed_missions_count DESC, u.name ASC
+    `);
+    return res.json({
+      success: true,
+      trainees: rows.map((row: any) => ({
+        id: row.id,
+        nim: row.nim,
+        name: row.name,
+        avatar: row.avatar || '',
+        kejuruanId: row.kejuruan_id || undefined,
+        kejuruanName: row.kejuruan_name || undefined,
+        totalPoints: Number(row.total_points),
+        completedMissionsCount: Number(row.completed_missions_count),
+      })),
+    });
+  } catch (error: any) {
+    console.error('[Trainee Hall of Fame Error]', error);
+    return res.status(500).json({ success: false, message: 'Gagal memuat peringkat peserta.' });
+  }
+});
+
 appDataRouter.put('/settings', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ success: false, message: 'Hanya admin yang dapat mengubah pengaturan lokasi presensi.' });

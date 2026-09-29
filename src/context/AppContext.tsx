@@ -215,14 +215,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const parsed = JSON.parse(saved) as AttendanceSettings;
       const legacyOfficePin = parsed.officeLocation?.lat === -6.921024681282541 && parsed.officeLocation?.lng === 107.6750205521894;
-      const legacyJakartaPin = parsed.officeLocation?.lat === -6.2088 && parsed.officeLocation?.lng === 106.8456;
       return {
         ...INITIAL_SETTINGS,
         ...parsed,
         officeLocation: {
           ...INITIAL_SETTINGS.officeLocation,
           ...parsed.officeLocation,
-          ...(legacyOfficePin || legacyJakartaPin ? {
+          ...(legacyOfficePin ? {
             lat: INITIAL_SETTINGS.officeLocation.lat,
             lng: INITIAL_SETTINGS.officeLocation.lng
           } : {})
