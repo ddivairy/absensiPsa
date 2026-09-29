@@ -565,13 +565,13 @@ html[data-theme='dark'] ::-webkit-scrollbar-thumb { background: #385166; }
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
 }
 
-@media (max-width: 639px) {
-  .fixed.inset-0 > .surface {
-    max-height: calc(100dvh - 2rem);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
+.fixed.inset-0 > .surface {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
+@media (max-width: 639px) {
   input,
   textarea,
   select {

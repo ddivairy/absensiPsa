@@ -674,9 +674,9 @@ export const DailyReportView: React.FC = () => {
 
       {/* Review Modal */}
       {selectedReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0D2F47]/45 backdrop-blur-sm">
-          <div className="surface rounded-2xl max-w-lg w-full overflow-hidden">
-            <div className="p-4 border-b border-[#E4EAF0] flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2 sm:p-4 bg-[#0D2F47]/45 backdrop-blur-sm">
+          <div className="surface flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl sm:max-h-[calc(100dvh-2rem)]">
+            <div className="flex shrink-0 items-center justify-between border-b border-[#E4EAF0] p-4">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-[#4C83B5]" />
                 <h3 className="font-bold text-sm text-[#123B59]">Verifikasi Laporan Harian</h3>
@@ -686,7 +686,7 @@ export const DailyReportView: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
               {/* Trainee info */}
               <div className="flex items-center gap-3 p-3 rounded-xl bg-[#EAF2F8] border border-[#A9C7DE]/40">
                 <img src={selectedReport.traineeAvatar} alt={selectedReport.traineeName} className="w-10 h-10 rounded-full border border-[#E4EAF0]" />
@@ -730,15 +730,15 @@ export const DailyReportView: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#E4EAF0]">
+              <div className="flex flex-col-reverse gap-2 border-t border-[#E4EAF0] pt-3 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
                   onClick={() => handleConfirmReview('rejected')}
-                  className="px-3.5 py-2 rounded-lg bg-[#FCF3F6] hover:bg-[#D95B83] hover:text-white text-[#B84469] text-xs font-semibold transition cursor-pointer"
+                  className="w-full px-3.5 py-2 rounded-lg bg-[#FCF3F6] hover:bg-[#D95B83] hover:text-white text-[#B84469] text-xs font-semibold transition cursor-pointer sm:w-auto"
                 >
                   Kembalikan / Minta Revisi
                 </button>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedReport(null)}
