@@ -3,7 +3,22 @@ import {
   Mission, MissionSubmission, DailyReport, TraineeHallOfFameEntry
 } from '../types';
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+function resolveApiBaseUrl(): string {
+  const raw = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+  if (!raw) return '';
+  const isLoopback = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(raw);
+  if (
+    isLoopback &&
+    typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
+    return '';
+  }
+  return raw;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export interface LoginResponse {
   success: boolean;
@@ -24,6 +39,7 @@ export interface HealthResponse {
   database: string;
   jwt: string;
   timestamp: string;
+  error?: string;
 }
 
 export interface AppDataSnapshot {
@@ -63,11 +79,20 @@ export const api = {
       ...((options.headers as Record<string, string>) || {}),
     };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
       credentials: 'include',
     });
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(
+        response.status === 404
+          ? 'API Vercel tidak ditemukan. Redeploy project setelah perubahan folder api/.'
+          : `API tidak merespons JSON (HTTP ${response.status}). Function backend mungkin gagal start.`
+      );
+    }
 
     const data = await response.json().catch(() => ({}));
 

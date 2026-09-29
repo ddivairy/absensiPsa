@@ -2,24 +2,35 @@
 
 ## Konfigurasi project
 
-Hubungkan repository ke Vercel dan gunakan perintah build `npm run build` dengan output directory `dist`. File `api/[...path].ts` meneruskan semua request `/api/*` ke Express. Function ditempatkan di region Singapore (`sin1`) agar dekat dengan cluster TiDB Asia Tenggara.
+Hubungkan repository ke Vercel. File `vercel.json` sudah mengatur framework Vite, output `dist`, dan function `/api`. Function di-region Singapore (`sin1`) agar dekat dengan cluster TiDB Asia Tenggara.
+
+Frontend (Vite) dan backend (Express di `api/`) harus berada di **satu project Vercel** yang sama agar request `/api/*` memakai domain yang sama.
 
 ## Environment variables
 
-Tambahkan variabel berikut pada Vercel Project Settings → Environment Variables. Isi nilainya di dashboard Vercel; jangan commit file `.env`.
+Tambahkan variabel berikut pada Vercel Project Settings → Environment Variables untuk Production **dan** Preview. Isi nilainya di dashboard; jangan commit file `.env`.
 
-- `TIDB_HOST`, `TIDB_PORT`, `TIDB_USER`, `TIDB_PASSWORD`, `TIDB_DATABASE` (atau gunakan `DATABASE_URL` bila memilih konfigurasi URL)
-- `JWT_SECRET` (gunakan secret acak panjang)
+Wajib:
+
+- `JWT_SECRET` — secret acak panjang
+- `TIDB_HOST`, `TIDB_PORT` (biasanya `4000`), `TIDB_USER`, `TIDB_PASSWORD`, `TIDB_DATABASE` (atau `DATABASE_URL`)
+
+Opsional:
+
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
-- `CLIENT_ORIGIN` hanya bila frontend/API diakses dari origin berbeda; untuk beberapa origin, pisahkan dengan koma
-- `VITE_API_URL` biarkan kosong bila frontend dan API berada di project/domain Vercel yang sama
+- `CLIENT_ORIGIN` hanya jika frontend dan API beda origin; beberapa origin dipisah koma
+- `VITE_API_URL` **harus kosong** jika frontend dan API satu domain Vercel. Jangan isi `http://localhost:...` di Production.
 
-Atur variabel untuk environment Preview dan Production yang dipakai, lalu buat deployment baru setelah mengubahnya.
+Setelah mengubah env, klik **Redeploy** (tanpa cache jika function masih 404).
+
+## TiDB Cloud
+
+Di dashboard TiDB, izinkan koneksi dari internet / `0.0.0.0/0` (atau setidaknya jangan kunci IP ke laptop saja). Egress IP Vercel berubah-ubah, jadi allowlist IP laptop akan membuat API terasa "mati" setelah di-deploy.
+
+Jalankan `npm run migrate:tidb` sekali dari mesin yang bisa mengakses cluster, supaya tabel siap sebelum traffic production.
 
 ## Pemeriksaan setelah deploy
 
-1. Buka `/api/health` dan pastikan status API berhasil serta TiDB tersambung.
-2. Uji login, pemuatan data, check-in/check-out, unggah laporan, dan foto profil pada deployment Preview sebelum mengarahkan domain produksi.
-3. Pastikan firewall/network policy TiDB mengizinkan koneksi dari Vercel. Alamat egress Vercel dapat berbeda; gunakan solusi egress yang sesuai dengan kebijakan cluster.
-
-Deployment dan koneksi TiDB live perlu diverifikasi dari project Vercel karena tidak dapat dipastikan hanya dari build lokal.
+1. Buka `https://<project>.vercel.app/api/health`. Harus JSON `status: "online"` dan `database: "TiDB Cloud"`. Jika HTML halaman login yang muncul, function API gagal di-build — cek log Function di Vercel.
+2. Jika JSON `503` dengan `error`, isi env yang disebut, lalu Redeploy.
+3. Uji login, data, check-in/out, unggah laporan, dan foto profil di deployment Preview dulu.

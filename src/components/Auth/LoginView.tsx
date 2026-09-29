@@ -70,8 +70,16 @@ export const LoginView: React.FC = () => {
           <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 px-3 py-1 bg-white rounded-2xl sm:rounded-full border border-[#DCE4EC] text-[11px] shadow-xs">
             <Database className="w-3.5 h-3.5 text-[#123B59]" />
             <span className="font-semibold text-[#123B59]">TiDB Cloud</span>
-            <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className={`inline-flex items-center gap-1 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+              tidbStatus === 'connected'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : tidbStatus === 'connecting'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                tidbStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : tidbStatus === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
+              }`}></span>
               {tidbStatus === 'connected' ? 'Connected' : tidbStatus}
             </span>
             <span className="text-[#A9B8C5]">&bull;</span>
@@ -80,6 +88,12 @@ export const LoginView: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {tidbStatus === 'offline' && (
+          <div className="p-3.5 rounded-xl border border-[#E3C4D0] bg-[#FCF3F6] text-xs text-[#B84469] font-medium">
+            Backend belum terhubung. Buka <span className="font-mono">/api/health</span> pada domain Vercel ini, lalu pastikan environment JWT_SECRET dan TiDB sudah diisi lalu Redeploy.
+          </div>
+        )}
 
         {/* Surface Card Box */}
         <div className="surface rounded-2xl p-6 sm:p-7 shadow-xl space-y-5 bg-white border border-[#E4EAF0]">

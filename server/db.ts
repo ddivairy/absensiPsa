@@ -3,6 +3,39 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+export function describeDatabaseConfig(): { ok: boolean; missing: string[] } {
+  const splitConfigKeys = [
+    'TIDB_HOST',
+    'TIDB_PORT',
+    'TIDB_USER',
+    'TIDB_PASSWORD',
+    'TIDB_DATABASE',
+  ] as const;
+  const hasSplitConfig = splitConfigKeys.some(key => process.env[key]);
+
+  if (hasSplitConfig) {
+    const missing = ['TIDB_HOST', 'TIDB_USER', 'TIDB_PASSWORD']
+      .filter(key => !process.env[key]);
+    return { ok: missing.length === 0, missing };
+  }
+
+  if (process.env.DATABASE_URL) {
+    return { ok: true, missing: [] };
+  }
+
+  return { ok: false, missing: ['TIDB_HOST', 'TIDB_USER', 'TIDB_PASSWORD'] };
+}
+
+export async function pingDatabase(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const pool = getPool();
+    await pool.query('SELECT 1 as connected');
+    return { ok: true };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || String(error) };
+  }
+}
+
 function getDbConfig() {
   const splitConfigKeys = [
     'TIDB_HOST',
@@ -57,8 +90,9 @@ function getDbConfig() {
       rejectUnauthorized: true,
     },
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: process.env.VERCEL === '1' ? 1 : 10,
     queueLimit: 0,
+    connectTimeout: 12000,
     // Preserve SQL DATE values as YYYY-MM-DD strings. Converting DATE to a JS
     // Date applies the server timezone and can shift attendance to the prior day.
     dateStrings: ['DATE'] as ('DATE' | 'DATETIME' | 'TIMESTAMP')[],

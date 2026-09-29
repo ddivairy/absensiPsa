@@ -5,13 +5,16 @@ import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET || (
-  process.env.NODE_ENV === 'production'
-    ? ''
-    : 'local-only-hadirku-development-secret'
-);
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET wajib diisi pada environment production.');
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET || (
+    process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+      ? ''
+      : 'local-only-hadirku-development-secret'
+  );
+  if (!secret) {
+    throw new Error('JWT_SECRET wajib diisi pada environment production Vercel.');
+  }
+  return secret;
 }
 const JWT_EXPIRES_IN = '7d';
 
@@ -34,14 +37,14 @@ export interface AuthenticatedRequest extends Request {
 
 // Sign JWT
 export function generateToken(payload: UserTokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, {
+  return jwt.sign(payload, getJwtSecret(), {
     expiresIn: JWT_EXPIRES_IN,
   });
 }
 
 // Verify JWT
 export function verifyToken(token: string): UserTokenPayload {
-  return jwt.verify(token, JWT_SECRET) as UserTokenPayload;
+  return jwt.verify(token, getJwtSecret()) as UserTokenPayload;
 }
 
 // Compare password (supports both bcrypt hash and plain-text fallback during transition)

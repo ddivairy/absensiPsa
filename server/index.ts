@@ -1,7 +1,7 @@
 import express, { Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { getPool, initDatabase, DbUser } from './db';
+import { getPool, initDatabase, pingDatabase, describeDatabaseConfig, DbUser } from './db';
 import { appDataRouter } from './appData';
 import { canonicalKejuruanCode } from './kejuruanCodes';
 import bcrypt from 'bcryptjs';
@@ -21,9 +21,10 @@ const app = express();
 const PORT = process.env.PORT || 5010;
 const AUTH_COOKIE = 'hadirku_auth';
 const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const isVercelRuntime = process.env.VERCEL === '1';
 const authCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: process.env.NODE_ENV === 'production' || isVercelRuntime,
   sameSite: 'lax' as const,
   path: '/',
   maxAge: AUTH_COOKIE_MAX_AGE,
@@ -41,29 +42,68 @@ const configuredClientOrigins = (process.env.CLIENT_ORIGIN || '')
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
+
+function isAllowedOrigin(origin: string): boolean {
+  if (configuredClientOrigins.includes(origin)) return true;
+  const vercelHost = process.env.VERCEL_URL;
+  if (vercelHost && origin === `https://${vercelHost}`) return true;
+  try {
+    const hostname = new URL(origin).hostname;
+    if (hostname.endsWith('.vercel.app')) return true;
+  } catch {
+    return false;
+  }
+  return process.env.NODE_ENV !== 'production' && configuredClientOrigins.length === 0;
+}
+
+app.set('trust proxy', 1);
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, false);
-    if (configuredClientOrigins.includes(origin)) return callback(null, true);
-    if (process.env.NODE_ENV !== 'production' && configuredClientOrigins.length === 0) {
-      return callback(null, true);
-    }
+    if (!origin) return callback(null, true);
+    if (isAllowedOrigin(origin)) return callback(null, true);
     return callback(null, false);
   },
   credentials: true,
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use((req, res, next) => {
+  if (req.body !== undefined && req.body !== null && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+    return next();
+  }
+  if (typeof req.body === 'string') {
+    try {
+      req.body = req.body ? JSON.parse(req.body) : {};
+      return next();
+    } catch {
+      req.body = {};
+      return next();
+    }
+  }
+  if (Buffer.isBuffer(req.body)) {
+    try {
+      const text = req.body.toString('utf8');
+      req.body = text ? JSON.parse(text) : {};
+    } catch {
+      req.body = {};
+    }
+    return next();
+  }
+  return express.json({ limit: '10mb' })(req, res, next);
+});
 
 // Vercel Functions have no persistent server startup hook. Initialize once per
 // warm function instance before the first API request instead of calling listen().
-if (process.env.VERCEL === '1') {
+if (isVercelRuntime) {
   let databaseInitialization: Promise<void> | null = null;
   app.use((req, res, next) => {
+    const path = (req.path || req.url || '').split('?')[0];
+    if (path === '/api/health' || path === '/health') {
+      return next();
+    }
     databaseInitialization ??= initDatabase();
     databaseInitialization.then(() => next()).catch(error => {
       databaseInitialization = null;
       console.error('[TiDB] Initialization failed in Vercel Function:', error);
-      res.status(503).json({ success: false, message: 'Database belum siap. Coba lagi beberapa saat.' });
+      res.status(503).json({ success: false, message: 'Database belum siap. Coba lagi beberapa saat.', error: (error as Error).message });
     });
   });
 }
@@ -139,22 +179,47 @@ app.put('/api/profile/avatar', authenticateToken, async (req: AuthenticatedReque
 
 // 1. Health check & DB status
 app.get('/api/health', async (_req, res) => {
-  try {
-    const pool = getPool();
-    const [result] = await pool.query('SELECT 1 as connected');
-    res.json({
-      status: 'online',
-      database: 'TiDB Cloud',
-      jwt: 'enabled',
+  const dbConfig = describeDatabaseConfig();
+  const jwtConfigured = Boolean(process.env.JWT_SECRET);
+  const requiresJwt = isVercelRuntime || process.env.NODE_ENV === 'production';
+
+  if (requiresJwt && !jwtConfigured) {
+    return res.status(503).json({
+      status: 'error',
+      database: dbConfig.ok ? 'TiDB Cloud' : 'not configured',
+      jwt: 'missing JWT_SECRET',
+      error: 'JWT_SECRET belum diisi di Environment Variables Vercel.',
       timestamp: new Date().toISOString(),
     });
-  } catch (err: any) {
-    res.status(500).json({
+  }
+
+  if (!dbConfig.ok) {
+    return res.status(503).json({
       status: 'error',
-      database: 'TiDB Cloud Error',
-      error: err.message,
+      database: 'not configured',
+      jwt: jwtConfigured ? 'enabled' : 'missing JWT_SECRET',
+      error: `Konfigurasi database belum lengkap: ${dbConfig.missing.join(', ')}.`,
+      timestamp: new Date().toISOString(),
     });
   }
+
+  const ping = await pingDatabase();
+  if (!ping.ok) {
+    return res.status(503).json({
+      status: 'error',
+      database: 'TiDB Cloud Error',
+      jwt: jwtConfigured ? 'enabled' : 'missing JWT_SECRET',
+      error: ping.error,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return res.json({
+    status: 'online',
+    database: 'TiDB Cloud',
+    jwt: 'enabled',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // 2. Login Endpoint (Supports all 3 roles: admin, mentor, trainee)
@@ -334,7 +399,7 @@ app.post('/api/auth/login', async (req, res: Response) => {
 app.post('/api/auth/logout', (_req, res: Response) => {
   res.clearCookie(AUTH_COOKIE, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production' || isVercelRuntime,
     sameSite: 'lax',
     path: '/',
   });
@@ -1150,6 +1215,6 @@ async function startServer() {
 
 export default app;
 
-if (process.env.VERCEL !== '1') {
+if (!isVercelRuntime) {
   void startServer();
 }

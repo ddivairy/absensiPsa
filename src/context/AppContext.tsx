@@ -143,10 +143,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const health = await api.checkHealth();
         if (isMounted) {
-          if (health?.database?.includes('TiDB')) {
+          if (health?.status === 'online' && health?.database?.includes('TiDB')) {
             setTidbStatus('connected');
           } else {
-            setTidbStatus('connected');
+            setTidbStatus('offline');
           }
         }
       } catch (e) {
