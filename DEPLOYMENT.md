@@ -9,6 +9,7 @@ Frontend (Vite) dan backend (Express di `api/`) harus berada di **satu project V
 ## Environment variables
 
 Tambahkan variabel berikut pada Vercel Project Settings → Environment Variables untuk Production **dan** Preview. Isi nilainya di dashboard; jangan commit file `.env`.
+Nama variabel bersifat case-sensitive dan harus ditulis persis seperti daftar di bawah.
 
 Wajib:
 
